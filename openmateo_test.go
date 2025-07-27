@@ -2,9 +2,11 @@ package openmateo
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,6 +37,115 @@ func TestClient_Get(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, weatherData)
 	assert.Equal(t, 52.52, weatherData.Latitude)
+}
+
+// mockRoundTripper is a custom http.RoundTripper to simulate network errors.
+type mockRoundTripper struct {
+	err error
+}
+
+func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	return nil, m.err
+}
+
+func TestClient_Get_ErrorConditions(t *testing.T) {
+	// Test case for a direct network error (e.g., server unreachable)
+	t.Run("Network Error on Do", func(t *testing.T) {
+		client := NewClient()
+		// Inject a mock transport that always returns an error
+		client.HTTPClient = &http.Client{
+			Transport: &mockRoundTripper{err: errors.New("simulated network error")},
+		}
+
+		_, err := client.Get(&Options{})
+		if err == nil {
+			t.Fatal("expected a network error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "simulated network error") {
+			t.Errorf("expected error to contain 'simulated network error', but got %v", err)
+		}
+	})
+
+	// Table-driven tests for various server response errors
+	tests := map[string]struct {
+		handler       http.HandlerFunc
+		expectErr     bool
+		errContains   string
+		checkResponse func(*WeatherData) bool // Optional check on the response
+	}{
+		"API Error 500 Internal Server Error": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"error": "true", "reason": "Something went wrong"}`))
+			},
+			expectErr:   true,
+			errContains: "server http error: 500", // The current Get() implementation will fail on JSON decoding
+		},
+
+		"API Error 400 Bad Request": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(`{"error": "true", "reason": "Invalid request parameters"}`))
+			},
+			expectErr:   true,
+			errContains: "server http error: 400", // This also fails on JSON decoding
+		},
+
+		"Malformed JSON Response": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"latitude": 40.71, "longitude": -74.01,`)) // Incomplete JSON
+			},
+			expectErr:   true,
+			errContains: "unexpected EOF",
+		},
+
+		"Empty Response Body": {
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				// Write nothing to the body
+			},
+			expectErr:   true,
+			errContains: "EOF",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Create a new mock server for each test case
+			server := httptest.NewServer(tc.handler)
+			defer server.Close()
+
+			// Create a client configured to use the mock server
+			client := NewClient()
+			client.HTTPClient = server.Client() // Use the test server's client
+			client.host = server.URL            // Point the client to the mock server
+			client.scheme = ""                  // Scheme is included in server.URL
+
+			// Create basic options for the request
+			opts := NewOptionsBuilder().Latitude(40.71).Longitude(-74.01).Build()
+
+			// We need to parse the server URL to set the host and scheme properly
+			// so the client's url() method builds the correct URL for the test server.
+			// A simpler way for testing is to just replace the host and scheme.
+			urlParts := strings.Split(server.URL, "://")
+			client.scheme = urlParts[0]
+			client.host = urlParts[1]
+
+			_, err := client.Get(opts)
+
+			if tc.expectErr {
+				if err == nil {
+					t.Fatalf("expected an error, but got nil")
+				}
+				if tc.errContains != "" && !strings.Contains(err.Error(), tc.errContains) {
+					t.Errorf("expected error to contain %q, but got: %v", tc.errContains, err)
+				}
+			} else if err != nil {
+				t.Fatalf("did not expect an error, but got: %v", err)
+			}
+		})
+	}
 }
 
 func TestURL(t *testing.T) {

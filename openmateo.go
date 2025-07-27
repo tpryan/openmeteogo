@@ -43,6 +43,10 @@ func (c *Client) Get(o *Options) (*WeatherData, error) {
 
 	defer res.Body.Close()
 
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server http error: %d", res.StatusCode)
+	}
+
 	var wd WeatherData
 	if err = json.NewDecoder(res.Body).Decode(&wd); err != nil {
 		return nil, fmt.Errorf("decoding response: %w", err)
