@@ -5,86 +5,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
-const defaultHost = "api.open-meteo.com"
-const defaultScheme = "https"
-
-// DefaultUserAgent is the default User-Agent string sent with HTTP requests.
-const DefaultUserAgent = "OpenMeteoGo-Client"
-
-// TemperatureUnit defines the unit for temperature values.
-type TemperatureUnit int64
-
 const (
-	// Celsius is the default temperature unit.
-	Celsius TemperatureUnit = iota
-	// Fahrenheit temperature unit.
-	Fahrenheit
+	defaultHost   = "api.open-meteo.com"
+	defaultScheme = "https"
+
+	// DefaultUserAgent is the default User-Agent string sent with HTTP requests.
+	DefaultUserAgent = "OpenMeteoGo-Client"
 )
-
-// String returns the string representation of the TemperatureUnit for the API.
-func (t TemperatureUnit) String() string {
-	switch t {
-	case Celsius:
-		return "celsius"
-	case Fahrenheit:
-		return "fahrenheit"
-	}
-	return "unknown"
-}
-
-// WindSpeedUnit defines the unit for wind speed values.
-type WindSpeedUnit int64
-
-const (
-	// KMH is the default wind speed unit (kilometers per hour).
-	KMH WindSpeedUnit = iota
-	// MS is meters per second.
-	MS
-	// MPH is miles per hour.
-	MPH
-	// KN is knots.
-	KN
-)
-
-// String returns the string representation of the WindSpeedUnit for the API.
-func (w WindSpeedUnit) String() string {
-	switch w {
-	case KMH:
-		return "kmh"
-	case MS:
-		return "ms"
-	case MPH:
-		return "mph"
-	case KN:
-		return "kn"
-	}
-	return "unknown"
-}
-
-// PrecipitationUnit defines the unit for precipitation values.
-type PrecipitationUnit int64
-
-const (
-	// MM is the default precipitation unit (millimeters).
-	MM PrecipitationUnit = iota
-	// IN is inches.
-	IN
-)
-
-// String returns the string representation of the PrecipitationUnit for the API.
-func (p PrecipitationUnit) String() string {
-	switch p {
-	case MM:
-		return "mm"
-	case IN:
-		return "in"
-	}
-	return "unknown"
-}
 
 // Client is used to interact with the Open-Meteo API.
 type Client struct {
@@ -166,7 +96,7 @@ func (c *Client) url(o *Options) string {
 		Path:   path,
 	}
 
-	q := newOrderedQuery()
+	q := u.Query()
 
 	if c.apiKey != "" {
 		q.Set("apikey", c.apiKey)
@@ -213,9 +143,6 @@ func (c *Client) url(o *Options) string {
 		if val := o.DailyMetrics.encode(); val != "" {
 			q.Set("daily", val)
 		}
-	} else if o.ForcastDays > 0 {
-		// Default to weathercode if forecast days are requested but no specific daily metrics
-		q.Set("daily", "weathercode")
 	}
 
 	if o.ForcastDays > 0 {
@@ -231,33 +158,6 @@ func (c *Client) url(o *Options) string {
 	u.RawQuery = q.Encode()
 
 	return u.String()
-}
-
-type orderedQuery struct {
-	keys   []string
-	values map[string]string
-}
-
-func (o *orderedQuery) Set(key, value string) {
-	o.keys = append(o.keys, key)
-	o.values[key] = value
-}
-
-func (o *orderedQuery) Encode() string {
-	tmp := []string{}
-
-	for _, key := range o.keys {
-		tmp = append(tmp, fmt.Sprintf("%s=%s", key, o.values[key]))
-	}
-
-	return strings.Join(tmp, "&")
-}
-
-func newOrderedQuery() *orderedQuery {
-	return &orderedQuery{
-		values: map[string]string{},
-		keys:   []string{},
-	}
 }
 
 // WeatherData is the main struct that holds all the data returned from the API.

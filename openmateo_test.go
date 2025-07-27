@@ -55,7 +55,7 @@ func TestURL(t *testing.T) {
 				Start: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 				End:   time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
 			},
-			want: "https://archive-api.open-meteo.com/v1/archive?latitude=0&longitude=0&start_date=2000-01-01&end_date=2000-01-02",
+			want: "https://archive-api.open-meteo.com/v1/archive?end_date=2000-01-02&latitude=0&longitude=0&start_date=2000-01-01",
 		},
 		"with api key": {
 			client:  NewClientWithKey("testkeynotvalue"),
@@ -65,22 +65,22 @@ func TestURL(t *testing.T) {
 		"hourly and daily": {
 			client:  NewClient(),
 			options: Options{HourlyMetrics: &HourlyMetrics{Temperature2m: true}, DailyMetrics: &DailyMetrics{Temperature2mMin: true}},
-			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&hourly=temperature_2m&daily=temperature_2m_min",
+			want:    "https://api.open-meteo.com/v1/forecast?daily=temperature_2m_min&hourly=temperature_2m&latitude=0&longitude=0",
 		},
 		"current condition": {
 			client:  NewClient(),
 			options: Options{CurrentMetrics: &CurrentMetrics{Temperature2m: true}},
-			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&current=temperature_2m",
+			want:    "https://api.open-meteo.com/v1/forecast?current=temperature_2m&latitude=0&longitude=0",
 		},
 		"iota options": {
 			client:  NewClient(),
 			options: *NewOptionsBuilder().TemperatureUnit(Fahrenheit).WindspeedUnit(KN).PrecipitationUnit(IN).Build(),
-			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&temperature_unit=fahrenheit&windspeed_unit=kn&precipitation_unit=in",
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&precipitation_unit=in&temperature_unit=fahrenheit&windspeed_unit=kn",
 		},
 		"other options": {
 			client:  NewClient(),
 			options: *NewOptionsBuilder().Timezone(*time.UTC).PastDays(1).ForcastDays(2).Build(),
-			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&timezone=UTC&past_days=1&daily=weathercode&forecast_days=2",
+			want:    "https://api.open-meteo.com/v1/forecast?forecast_days=2&latitude=0&longitude=0&past_days=1&timezone=UTC",
 		},
 	}
 	for name, tc := range tests {
