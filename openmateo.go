@@ -31,21 +31,21 @@ type Client struct {
 func (c *Client) Get(o *Options) (*WeatherData, error) {
 	req, err := http.NewRequest("GET", c.url(o), nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", c.UserAgent)
 
 	res, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sending request: %w", err)
 	}
 
 	defer res.Body.Close()
 
 	var wd WeatherData
 	if err = json.NewDecoder(res.Body).Decode(&wd); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding response: %w", err)
 	}
 
 	return &wd, nil
