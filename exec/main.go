@@ -40,14 +40,14 @@ func main() {
 	fmt.Printf("Current Weather in San Francisco (Lat: %.2f, Lon: %.2f)\n", weather.Latitude, weather.Longitude)
 	fmt.Printf("Time: %s\n", weather.Current.Time)
 	fmt.Printf("Temperature: %.2f%s\n", weather.Current.Temperature2m, weather.CurrentUnits.Temperature2m)
-	fmt.Printf("Weather Code: %d\n\n", weather.Current.WeatherCode)
+	fmt.Printf("Weather: %s\n\n", openmateo.DescribeCode(weather.Current.WeatherCode))
 
 	// Print the daily forecast for today
 	if len(weather.Daily.Time) > 0 {
 		fmt.Printf("Forecast for %s:\n", weather.Daily.Time[0])
 		fmt.Printf("  Max Temperature: %.2f%s\n", weather.Daily.Temperature2mMax[0], weather.DailyUnits.Temperature2mMax)
 		fmt.Printf("  Min Temperature: %.2f%s\n", weather.Daily.Temperature2mMin[0], weather.DailyUnits.Temperature2mMin)
-		fmt.Printf("  Weather Code: %d\n", weather.Daily.WeatherCode[0])
+		fmt.Printf("  Weather: %s\n", openmateo.DescribeCode(weather.Daily.WeatherCode[0]))
 	}
 
 	pastOpts := openmateo.NewOptionsBuilder().
@@ -74,7 +74,7 @@ func main() {
 		fmt.Printf("Forecast for %s:\n", weatherPast.Daily.Time[0])
 		fmt.Printf("  Max Temperature: %.2f%s\n", weatherPast.Daily.Temperature2mMax[0], weatherPast.DailyUnits.Temperature2mMax)
 		fmt.Printf("  Min Temperature: %.2f%s\n", weatherPast.Daily.Temperature2mMin[0], weatherPast.DailyUnits.Temperature2mMin)
-		fmt.Printf("  Weather Code: %d\n", weatherPast.Daily.WeatherCode[0])
+		fmt.Printf("  Weather: %s\n", openmateo.DescribeCode(weatherPast.Daily.WeatherCode[0]))
 	}
 
 }
