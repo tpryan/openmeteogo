@@ -11,18 +11,22 @@ import (
 
 const baseHost = "api.open-meteo.com"
 
+// DefaultUserAgent is the default User-Agent string sent with HTTP requests.
 const DefaultUserAgent = "OpenMeteoGo-Client"
 
+// TemperatureUnit defines the unit for temperature values.
 type TemperatureUnit int64
 
 const (
+	// Celsius is the default temperature unit.
 	Celsius TemperatureUnit = iota
+	// Fahrenheit temperature unit.
 	Fahrenheit
 )
 
+// String returns the string representation of the TemperatureUnit for the API.
 func (t TemperatureUnit) String() string {
 	switch t {
-
 	case Celsius:
 		return "celsius"
 	case Fahrenheit:
@@ -31,18 +35,23 @@ func (t TemperatureUnit) String() string {
 	return "unknown"
 }
 
+// WindSpeedUnit defines the unit for wind speed values.
 type WindSpeedUnit int64
 
 const (
+	// KMH is the default wind speed unit (kilometers per hour).
 	KMH WindSpeedUnit = iota
+	// MS is meters per second.
 	MS
+	// MPH is miles per hour.
 	MPH
+	// KN is knots.
 	KN
 )
 
+// String returns the string representation of the WindSpeedUnit for the API.
 func (w WindSpeedUnit) String() string {
 	switch w {
-
 	case KMH:
 		return "kmh"
 	case MS:
@@ -55,16 +64,19 @@ func (w WindSpeedUnit) String() string {
 	return "unknown"
 }
 
+// PrecipitationUnit defines the unit for precipitation values.
 type PrecipitationUnit int64
 
 const (
+	// MM is the default precipitation unit (millimeters).
 	MM PrecipitationUnit = iota
+	// IN is inches.
 	IN
 )
 
+// String returns the string representation of the PrecipitationUnit for the API.
 func (p PrecipitationUnit) String() string {
 	switch p {
-
 	case MM:
 		return "mm"
 	case IN:
@@ -73,12 +85,16 @@ func (p PrecipitationUnit) String() string {
 	return "unknown"
 }
 
+// Client is used to interact with the Open-Meteo API.
 type Client struct {
-	apiKey     string
-	UserAgent  string
+	apiKey string
+	// UserAgent is the string sent in the User-Agent header of the request.
+	UserAgent string
+	// HTTPClient allows for a custom http.Client to be used for requests.
 	HTTPClient *http.Client
 }
 
+// Get fetches weather data based on the provided Options.
 func (c *Client) Get(o *Options) (*WeatherData, error) {
 	req, err := http.NewRequest("GET", c.url(o), nil)
 	if err != nil {
@@ -102,6 +118,7 @@ func (c *Client) Get(o *Options) (*WeatherData, error) {
 	return &wd, nil
 }
 
+// NewClient creates a new Client with default settings.
 func NewClient() *Client {
 	return &Client{
 		HTTPClient: http.DefaultClient,
@@ -109,6 +126,7 @@ func NewClient() *Client {
 	}
 }
 
+// NewClientWithKey creates a new Client configured with a commercial API key.
 func NewClientWithKey(key string) *Client {
 	return &Client{
 		apiKey:     key,
@@ -235,7 +253,7 @@ func newOrderedQuery() *orderedQuery {
 	}
 }
 
-// WeatherData is the main struct that holds all the forecast data.
+// WeatherData is the main struct that holds all the data returned from the API.
 type WeatherData struct {
 	Latitude             float64      `json:"latitude"`
 	Longitude            float64      `json:"longitude"`

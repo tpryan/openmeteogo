@@ -6,101 +6,132 @@ import (
 	"time"
 )
 
+// Options holds all the parameters for a weather data request.
+// It is configured using the OptionsBuilder.
 type Options struct {
-	Latitude          float64
-	Longitude         float64
-	TemperatureUnit   TemperatureUnit   // Default "celsius"
-	WindspeedUnit     WindSpeedUnit     // Default "kmh",
-	PrecipitationUnit PrecipitationUnit // Default "mm"
-	Timezone          time.Location     // Default "UTC"
-	PastDays          int               // Default 0
-	ForcastDays       int
-	Start             time.Time
-	End               time.Time
-	HourlyMetrics     *HourlyMetrics
-	DailyMetrics      *DailyMetrics
-	CurrentMetrics    *CurrentMetrics
+	// Latitude for the weather forecast.
+	Latitude float64
+	// Longitude for the weather forecast.
+	Longitude float64
+	// TemperatureUnit sets the unit for temperature values. Default is Celsius.
+	TemperatureUnit TemperatureUnit
+	// WindspeedUnit sets the unit for wind speed values. Default is km/h.
+	WindspeedUnit WindSpeedUnit
+	// PrecipitationUnit sets the unit for precipitation values. Default is millimeters.
+	PrecipitationUnit PrecipitationUnit
+	// Timezone for the forecast data. Default is UTC.
+	Timezone time.Location
+	// PastDays specifies how many days of historical data to retrieve. Default is 0.
+	PastDays int
+	// ForcastDays specifies how many days of forecast data to retrieve.
+	ForcastDays int
+	// Start date for the historical data query.
+	Start time.Time
+	// End date for the historical data query.
+	End time.Time
+	// HourlyMetrics specifies which hourly weather variables to retrieve.
+	HourlyMetrics *HourlyMetrics
+	// DailyMetrics specifies which daily weather variables to retrieve.
+	DailyMetrics *DailyMetrics
+	// CurrentMetrics specifies which current weather variables to retrieve.
+	CurrentMetrics *CurrentMetrics
 }
 
+// OptionsBuilder provides a fluent interface for constructing an Options object.
 type OptionsBuilder struct {
 	options *Options
 }
 
+// NewOptionsBuilder creates a new OptionsBuilder with default options.
 func NewOptionsBuilder() *OptionsBuilder {
 	return &OptionsBuilder{options: &Options{}}
 }
 
+// Latitude sets the geographical latitude for the request.
 func (b *OptionsBuilder) Latitude(lat float64) *OptionsBuilder {
 	b.options.Latitude = lat
 	return b
 }
 
+// Longitude sets the geographical longitude for the request.
 func (b *OptionsBuilder) Longitude(lon float64) *OptionsBuilder {
 	b.options.Longitude = lon
 	return b
 }
 
+// TemperatureUnit sets the desired unit for temperature measurements.
 func (b *OptionsBuilder) TemperatureUnit(unit TemperatureUnit) *OptionsBuilder {
 	b.options.TemperatureUnit = unit
 	return b
 }
 
+// WindspeedUnit sets the desired unit for wind speed measurements.
 func (b *OptionsBuilder) WindspeedUnit(unit WindSpeedUnit) *OptionsBuilder {
 	b.options.WindspeedUnit = unit
 	return b
 }
 
+// PrecipitationUnit sets the desired unit for precipitation measurements.
 func (b *OptionsBuilder) PrecipitationUnit(unit PrecipitationUnit) *OptionsBuilder {
 	b.options.PrecipitationUnit = unit
 	return b
 }
 
+// Timezone sets the timezone for the returned data.
 func (b *OptionsBuilder) Timezone(tz time.Location) *OptionsBuilder {
 	b.options.Timezone = tz
 	return b
 }
 
+// PastDays sets the number of past days to retrieve data for.
 func (b *OptionsBuilder) PastDays(days int) *OptionsBuilder {
 	b.options.PastDays = days
 	return b
 }
 
+// ForcastDays sets the number of future days to retrieve data for.
 func (b *OptionsBuilder) ForcastDays(days int) *OptionsBuilder {
 	b.options.ForcastDays = days
 	return b
 }
 
+// Start sets the start date for a specific time-range query.
 func (b *OptionsBuilder) Start(start time.Time) *OptionsBuilder {
 	b.options.Start = start
 	return b
 }
 
+// End sets the end date for a specific time-range query.
 func (b *OptionsBuilder) End(end time.Time) *OptionsBuilder {
 	b.options.End = end
 	return b
 }
 
+// HourlyMetrics sets the specific hourly metrics to be fetched.
 func (b *OptionsBuilder) HourlyMetrics(metrics *HourlyMetrics) *OptionsBuilder {
 	b.options.HourlyMetrics = metrics
 	return b
 }
 
+// DailyMetrics sets the specific daily metrics to be fetched.
 func (b *OptionsBuilder) DailyMetrics(metrics *DailyMetrics) *OptionsBuilder {
 	b.options.DailyMetrics = metrics
 	return b
 }
 
+// CurrentMetrics sets the specific current weather metrics to be fetched.
 func (b *OptionsBuilder) CurrentMetrics(metrics *CurrentMetrics) *OptionsBuilder {
 	b.options.CurrentMetrics = metrics
 	return b
 }
 
+// Build finalizes the construction and returns the configured Options object.
 func (b *OptionsBuilder) Build() *Options {
 	return b.options
 }
 
 // HourlyMetrics specifies which hourly weather variables to retrieve.
-
+// Each boolean field corresponds to a specific metric from the Open-Meteo API.
 type HourlyMetrics struct {
 	Temperature2m            bool `json:"temperature_2m"`
 	RelativeHumidity2m       bool `json:"relative_humidity_2m"`
@@ -168,6 +199,7 @@ func (h *HourlyMetrics) encode() string {
 }
 
 // CurrentMetrics specifies which current weather variables to retrieve.
+// Each boolean field corresponds to a specific metric from the Open-Meteo API.
 type CurrentMetrics struct {
 	Temperature2m       bool `json:"temperature_2m"`
 	RelativeHumidity2m  bool `json:"relative_humidity_2m"`
@@ -191,6 +223,7 @@ func (c *CurrentMetrics) encode() string {
 }
 
 // DailyMetrics specifies which daily weather variables to retrieve.
+// Each boolean field corresponds to a specific metric from the Open-Meteo API.
 type DailyMetrics struct {
 	WeatherCode                 bool `json:"weather_code"`
 	Temperature2mMax            bool `json:"temperature_2m_max"`
