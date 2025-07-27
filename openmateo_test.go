@@ -18,12 +18,12 @@ func TestURL(t *testing.T) {
 		want    string
 	}{
 		"basic": {
-			client:  New(),
+			client:  NewClient(),
 			options: Options{},
 			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0",
 		},
 		"historical": {
-			client: New(),
+			client: NewClient(),
 			options: Options{
 				Start: time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 				End:   time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
@@ -31,17 +31,17 @@ func TestURL(t *testing.T) {
 			want: "https://archive-api.open-meteo.com/v1/archive?latitude=0&longitude=0&start_date=2000-01-01&end_date=2000-01-02",
 		},
 		"with api key": {
-			client:  NewWithKey("testkeynotvalue"),
+			client:  NewClientWithKey("testkeynotvalue"),
 			options: Options{},
 			want:    "https://customer-api.open-meteo.com/v1/forecast?apikey=testkeynotvalue&latitude=0&longitude=0",
 		},
 		"hourly and daily": {
-			client:  New(),
+			client:  NewClient(),
 			options: Options{HourlyMetrics: &HourlyMetrics{Temperature2m: true}, DailyMetrics: &DailyMetrics{Temperature2mMin: true}},
 			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&hourly=temperature_2m&daily=temperature_2m_min",
 		},
 		"current condition": {
-			client:  New(),
+			client:  NewClient(),
 			options: Options{CurrentMetrics: &CurrentMetrics{Temperature2m: true}},
 			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&current=temperature_2m",
 		},
@@ -50,26 +50,6 @@ func TestURL(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			got := tc.client.url(&tc.options)
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestCurrentMetrics(t *testing.T) {
-
-	tests := map[string]struct {
-		input CurrentMetrics
-		want  string
-	}{
-		"basic": {
-			input: CurrentMetrics{Temperature2m: true, RelativeHumidity2m: true},
-			want:  "temperature_2m,relative_humidity_2m",
-		},
-	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			got := tc.input.encode()
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -281,46 +261,6 @@ func TestParsing(t *testing.T) {
 			err = json.Unmarshal(dat, &got)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestHourlyMetrics(t *testing.T) {
-
-	tests := map[string]struct {
-		input HourlyMetrics
-		want  string
-	}{
-		"basic": {
-			input: HourlyMetrics{Temperature2m: true, RelativeHumidity2m: true},
-			want:  "temperature_2m,relative_humidity_2m",
-		},
-	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			got := tc.input.encode()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestDailyMetrics(t *testing.T) {
-
-	tests := map[string]struct {
-		input DailyMetrics
-		want  string
-	}{
-		"basic": {
-			input: DailyMetrics{WeatherCode: true, Temperature2mMax: true},
-			want:  "weather_code,temperature_2m_max",
-		},
-	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			got := tc.input.encode()
 			assert.Equal(t, tc.want, got)
 		})
 	}

@@ -9,25 +9,24 @@ import (
 
 func main() {
 	// Create a new client
-	c := openmateo.New()
+	c := openmateo.NewClient()
 
 	// Set the options for the weather data we want.
 	// Let's get the current temperature and weather code for New York City,
 	// as well as the forecast for today.
-	opts := &openmateo.Options{
-		Latitude:    40.71, // New York City
-		Longitude:   -74.01,
-		ForcastDays: 1, // We want today's forecast
-		CurrentMetrics: &openmateo.CurrentMetrics{
+	opts := openmateo.NewOptionsBuilder().
+		Latitude(40.71).Longitude(-74.01).
+		ForcastDays(1).
+		CurrentMetrics(&openmateo.CurrentMetrics{
 			Temperature2m: true,
 			WeatherCode:   true,
-		},
-		DailyMetrics: &openmateo.DailyMetrics{
+		}).
+		DailyMetrics(&openmateo.DailyMetrics{
 			Temperature2mMax: true,
 			Temperature2mMin: true,
 			WeatherCode:      true,
-		},
-	}
+		}).
+		Build()
 
 	// Make the API call
 	weather, err := c.Get(opts)
