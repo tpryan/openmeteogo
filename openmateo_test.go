@@ -2,6 +2,8 @@ package openmateo
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
@@ -9,6 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestClient_Get(t *testing.T) {
+	// Start a local HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Send response to be tested
+		dat, err := os.ReadFile("test_data/all_params.json")
+		require.NoError(t, err)
+		rw.Write(dat)
+	}))
+	// Close the server when test finishes
+	defer server.Close()
+
+	// Use Client & URL from our local test server
+	client := NewClient()
+	client.HTTPClient = server.Client()
+	client.host = server.URL[7:] // remove http://
+	client.scheme = "http"
+
+	opts := NewOptionsBuilder().Build()
+	weatherData, err := client.Get(opts)
+
+	require.NoError(t, err)
+	assert.NotNil(t, weatherData)
+	assert.Equal(t, 52.52, weatherData.Latitude)
+}
 
 func TestURL(t *testing.T) {
 
@@ -19,7 +46,7 @@ func TestURL(t *testing.T) {
 	}{
 		"basic": {
 			client:  NewClient(),
-			options: Options{},
+			options: *NewOptionsBuilder().Build(),
 			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0",
 		},
 		"historical": {
@@ -44,6 +71,16 @@ func TestURL(t *testing.T) {
 			client:  NewClient(),
 			options: Options{CurrentMetrics: &CurrentMetrics{Temperature2m: true}},
 			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&current=temperature_2m",
+		},
+		"iota options": {
+			client:  NewClient(),
+			options: *NewOptionsBuilder().TemperatureUnit(Fahrenheit).WindspeedUnit(KN).PrecipitationUnit(IN).Build(),
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&temperature_unit=fahrenheit&windspeed_unit=kn&precipitation_unit=in",
+		},
+		"other options": {
+			client:  NewClient(),
+			options: *NewOptionsBuilder().Timezone(*time.UTC).PastDays(1).ForcastDays(2).Build(),
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&timezone=UTC&past_days=1&daily=weathercode&forecast_days=2",
 		},
 	}
 	for name, tc := range tests {

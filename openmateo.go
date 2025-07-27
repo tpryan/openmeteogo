@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-const baseHost = "api.open-meteo.com"
+const defaultHost = "api.open-meteo.com"
+const defaultScheme = "https"
 
 // DefaultUserAgent is the default User-Agent string sent with HTTP requests.
 const DefaultUserAgent = "OpenMeteoGo-Client"
@@ -87,11 +88,13 @@ func (p PrecipitationUnit) String() string {
 
 // Client is used to interact with the Open-Meteo API.
 type Client struct {
-	apiKey string
 	// UserAgent is the string sent in the User-Agent header of the request.
 	UserAgent string
 	// HTTPClient allows for a custom http.Client to be used for requests.
 	HTTPClient *http.Client
+	apiKey     string
+	scheme     string
+	host       string
 }
 
 // Get fetches weather data based on the provided Options.
@@ -123,6 +126,8 @@ func NewClient() *Client {
 	return &Client{
 		HTTPClient: http.DefaultClient,
 		UserAgent:  DefaultUserAgent,
+		scheme:     defaultScheme,
+		host:       defaultHost,
 	}
 }
 
@@ -132,13 +137,15 @@ func NewClientWithKey(key string) *Client {
 		apiKey:     key,
 		HTTPClient: http.DefaultClient,
 		UserAgent:  DefaultUserAgent,
+		scheme:     defaultScheme,
+		host:       defaultHost,
 	}
 }
 
 func (c *Client) url(o *Options) string {
 	path := "/v1/forecast"
 	prefixes := []string{}
-	host := baseHost
+	host := c.host
 
 	if (!o.Start.IsZero()) && time.Since(o.Start) > 7*24*time.Hour {
 		prefixes = append(prefixes, "archive-")
@@ -154,7 +161,7 @@ func (c *Client) url(o *Options) string {
 	}
 
 	u := url.URL{
-		Scheme: "https",
+		Scheme: c.scheme,
 		Host:   host,
 		Path:   path,
 	}
@@ -168,15 +175,15 @@ func (c *Client) url(o *Options) string {
 	q.Set("latitude", fmt.Sprintf("%v", o.Latitude))
 	q.Set("longitude", fmt.Sprintf("%v", o.Longitude))
 
-	if o.TemperatureUnit >= 0 {
+	if o.TemperatureUnit > 0 {
 		q.Set("temperature_unit", o.TemperatureUnit.String())
 	}
 
-	if o.WindspeedUnit >= 0 {
+	if o.WindspeedUnit > 0 {
 		q.Set("windspeed_unit", o.WindspeedUnit.String())
 	}
 
-	if o.PrecipitationUnit >= 0 {
+	if o.PrecipitationUnit > 0 {
 		q.Set("precipitation_unit", o.PrecipitationUnit.String())
 	}
 
