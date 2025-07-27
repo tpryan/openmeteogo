@@ -27,7 +27,6 @@ func TestTemperatureUnitString(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.input.String()
 			assert.Equal(t, tc.want, got)
 		})
@@ -55,7 +54,6 @@ func TestPrecipitationUnitString(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.input.String()
 			assert.Equal(t, tc.want, got)
 		})
@@ -90,7 +88,6 @@ func TestWindSpeedUnitString(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.input.String()
 			assert.Equal(t, tc.want, got)
 		})

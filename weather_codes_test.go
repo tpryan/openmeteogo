@@ -135,7 +135,6 @@ func TestGetWeatherCodeDescription(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := DescribeCode(tc.code)
 			assert.Equal(t, tc.want, got)
 		})

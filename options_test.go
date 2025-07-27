@@ -20,7 +20,6 @@ func TestHourlyMetrics(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.input.encode()
 			assert.Equal(t, tc.want, got)
 		})
@@ -40,7 +39,6 @@ func TestDailyMetrics(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.input.encode()
 			assert.Equal(t, tc.want, got)
 		})
@@ -60,15 +58,56 @@ func TestCurrentMetrics(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.input.encode()
 			assert.Equal(t, tc.want, got)
 		})
 	}
 }
 
+func TestEncodeMetrics(t *testing.T) {
+
+	type testStruct struct {
+		A bool   `json:"a"`
+		B bool   `json:"b"`
+		C string `json:"c"`
+		D bool   `json:"d"`
+	}
+
+	tests := map[string]struct {
+		input interface{}
+		want  string
+	}{
+		"some true": {
+			input: testStruct{A: true, B: false, C: "hello", D: true},
+			want:  "a,d",
+		},
+		"all true": {
+			input: testStruct{A: true, B: true, D: true},
+			want:  "a,b,d",
+		},
+		"none true": {
+			input: testStruct{A: false, B: false, D: false},
+			want:  "",
+		},
+		"pointer to struct": {
+			input: &testStruct{A: true, B: true, D: false},
+			want:  "a,b",
+		},
+		"empty struct": {
+			input: struct{}{},
+			want:  "",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := encodeMetrics(tc.input)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestOptionsBuilder(t *testing.T) {
-	t.Parallel()
 
 	start := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2023, 1, 2, 0, 0, 0, 0, time.UTC)
