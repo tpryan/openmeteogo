@@ -1,4 +1,4 @@
-module github.com/tpryan/openmateogo
+module github.com/tpryan/openmeteogo
 
 go 1.24.5
 

@@ -2,6 +2,6 @@ module exec
 
 go 1.24.5
 
-replace github.com/tpryan/openmateogo => ../
+replace github.com/tpryan/openmeteogo => ../
 
-require github.com/tpryan/openmateogo v0.0.0-00010101000000-000000000000
+require github.com/tpryan/openmeteogo v0.0.0-00010101000000-000000000000

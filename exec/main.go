@@ -19,25 +19,25 @@ import (
 	"log"
 	"time"
 
-	openmateogo "github.com/tpryan/openmateogo"
+	openmeteogo "github.com/tpryan/openmeteogo"
 )
 
 func main() {
 	// Create a new client
-	c := openmateogo.NewClient()
+	c := openmeteogo.NewClient()
 
 	// Set the options for the weather data we want.
 	// Let's get the current temperature and weather code for San Francisco,
 	// as well as the forecast for today.
-	opts := openmateogo.NewOptionsBuilder().
+	opts := openmeteogo.NewOptionsBuilder().
 		Latitude(37.7749).Longitude(-122.4194).
-		TemperatureUnit(openmateogo.Fahrenheit).
+		TemperatureUnit(openmeteogo.Fahrenheit).
 		ForcastDays(1).
-		CurrentMetrics(&openmateogo.CurrentMetrics{
+		CurrentMetrics(&openmeteogo.CurrentMetrics{
 			Temperature2m: true,
 			WeatherCode:   true,
 		}).
-		DailyMetrics(&openmateogo.DailyMetrics{
+		DailyMetrics(&openmeteogo.DailyMetrics{
 			Temperature2mMax: true,
 			Temperature2mMin: true,
 			WeatherCode:      true,
@@ -54,20 +54,20 @@ func main() {
 	fmt.Printf("Current Weather in San Francisco (Lat: %.2f, Lon: %.2f)\n", weather.Latitude, weather.Longitude)
 	fmt.Printf("Time: %s\n", weather.Current.Time)
 	fmt.Printf("Temperature: %.2f%s\n", weather.Current.Temperature2m, weather.CurrentUnits.Temperature2m)
-	fmt.Printf("Weather: %s\n\n", openmateogo.DescribeCode(weather.Current.WeatherCode))
+	fmt.Printf("Weather: %s\n\n", openmeteogo.DescribeCode(weather.Current.WeatherCode))
 
 	// Print the daily forecast for today
 	if len(weather.Daily.Time) > 0 {
 		fmt.Printf("Forecast for %s:\n", weather.Daily.Time[0])
 		fmt.Printf("  Max Temperature: %.2f%s\n", weather.Daily.Temperature2mMax[0], weather.DailyUnits.Temperature2mMax)
 		fmt.Printf("  Min Temperature: %.2f%s\n", weather.Daily.Temperature2mMin[0], weather.DailyUnits.Temperature2mMin)
-		fmt.Printf("  Weather: %s\n", openmateogo.DescribeCode(weather.Daily.WeatherCode[0]))
+		fmt.Printf("  Weather: %s\n", openmeteogo.DescribeCode(weather.Daily.WeatherCode[0]))
 	}
 
-	pastOpts := openmateogo.NewOptionsBuilder().
+	pastOpts := openmeteogo.NewOptionsBuilder().
 		Latitude(37.7749).Longitude(-122.4194).
-		TemperatureUnit(openmateogo.Fahrenheit).
-		DailyMetrics(&openmateogo.DailyMetrics{
+		TemperatureUnit(openmeteogo.Fahrenheit).
+		DailyMetrics(&openmeteogo.DailyMetrics{
 			Temperature2mMax: true,
 			Temperature2mMin: true,
 			WeatherCode:      true,
@@ -88,7 +88,7 @@ func main() {
 		fmt.Printf("Forecast for %s:\n", weatherPast.Daily.Time[0])
 		fmt.Printf("  Max Temperature: %.2f%s\n", weatherPast.Daily.Temperature2mMax[0], weatherPast.DailyUnits.Temperature2mMax)
 		fmt.Printf("  Min Temperature: %.2f%s\n", weatherPast.Daily.Temperature2mMin[0], weatherPast.DailyUnits.Temperature2mMin)
-		fmt.Printf("  Weather: %s\n", openmateogo.DescribeCode(weatherPast.Daily.WeatherCode[0]))
+		fmt.Printf("  Weather: %s\n", openmeteogo.DescribeCode(weatherPast.Daily.WeatherCode[0]))
 	}
 
 }
