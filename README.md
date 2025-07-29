@@ -39,25 +39,25 @@ import (
 	"log"  
 	"time"
 
-	"github.com/tpryan/openmateo"  
+	"github.com/tpryan/openmeteogo"  
 )
 
 func main() {  
 	// 1. Create a new client  
-	c := openmateo.NewClient()
+	c := openmeteogo.NewClient()
 
 	// 2. Set the options for the weather data you want.  
 	// Use the fluent builder to easily configure your request.  
-	opts := openmateo.NewOptionsBuilder().  
+	opts := openmeteogo.NewOptionsBuilder().  
 		Latitude(37.7749).  
 		Longitude(-122.4194).  
-		TemperatureUnit(openmateo.Fahrenheit).  
+		TemperatureUnit(openmeteogo.Fahrenheit).  
 		ForcastDays(1).  
-		CurrentMetrics(\&openmateo.CurrentMetrics{  
+		CurrentMetrics(\&openmeteogo.CurrentMetrics{  
 			Temperature2m: true,  
 			WeatherCode:   true,  
 		}).  
-		DailyMetrics(\&openmateo.DailyMetrics{  
+		DailyMetrics(\&openmeteogo.DailyMetrics{  
 			Temperature2mMax: true,  
 			Temperature2mMin: true,  
 			WeatherCode:      true,  
@@ -74,14 +74,14 @@ func main() {
 	fmt.Printf("Current Weather in San Francisco (Lat: %.2f, Lon: %.2f)\\n", w.Latitude, w.Longitude)  
 	fmt.Printf("Time: %s\\n", w.Current.Time)  
 	fmt.Printf("Temperature: %.2f%s\\n", w.Current.Temperature2m, w.CurrentUnits.Temperature2m)  
-	fmt.Printf("Weather: %s\\n\\n", openmateo.DescribeCode(w.Current.WeatherCode))
+	fmt.Printf("Weather: %s\\n\\n", openmeteogo.DescribeCode(w.Current.WeatherCode))
 
 	// Print the daily forecast for today  
 	if len(w.Daily.Time) > 0 {  
 		fmt.Printf("Forecast for %s:\\n", w.Daily.Time\[0\])  
 		fmt.Printf("  Max Temperature: %.2f%s\\n", w.Daily.Temperature2mMax\[0\], w.DailyUnits.Temperature2mMax)  
 		fmt.Printf("  Min Temperature: %.2f%s\\n", w.Daily.Temperature2mMin\[0\], w.DailyUnits.Temperature2mMin)  
-		fmt.Printf("  Weather: %s\\n", openmateo.DescribeCode(w.Daily.WeatherCode\[0\]))  
+		fmt.Printf("  Weather: %s\\n", openmeteogo.DescribeCode(w.Daily.WeatherCode\[0\]))  
 	}  
 }
 ```
@@ -93,11 +93,11 @@ To get historical data, simply provide a Start and End date. The client will aut
 ```go
 
     // Fetch historical data for a specific week  
-    pastOpts := openmateo.NewOptionsBuilder().  
+    pastOpts := openmeteogo.NewOptionsBuilder().  
 		Latitude(37.7749).  
         Longitude(-122.4194).  
-		TemperatureUnit(openmateo.Fahrenheit).  
-		DailyMetrics(\&openmateo.DailyMetrics{  
+		TemperatureUnit(openmeteogo.Fahrenheit).  
+		DailyMetrics(\&openmeteogo.DailyMetrics{  
 			Temperature2mMax: true,  
 			Temperature2mMin: true,  
 			WeatherCode:      true,  
@@ -116,7 +116,7 @@ To get historical data, simply provide a Start and End date. The client will aut
         fmt.Printf("Weather for %s:\n", date)  
 		fmt.Printf("  Max Temp: %.2f%s\n", wp.Daily.Temperature2mMax[i], wp.DailyUnits.Temperature2mMax)  
 		fmt.Printf("  Min Temp: %.2f%s\n", wp.Daily.Temperature2mMin[i], wp.DailyUnits.Temperature2mMin)  
-		fmt.Printf("  Weather: %s\n", openmateo.DescribeCode(wp.Daily.WeatherCode[i]))  
+		fmt.Printf("  Weather: %s\n", openmeteogo.DescribeCode(wp.Daily.WeatherCode[i]))  
     }
 ```    
 
@@ -128,9 +128,9 @@ The OptionsBuilder provides a simple way to configure your request.
 | :---- | :---- | :---- |
 | Latitude() | Set the geographical latitude. | .Latitude(37.7749) |
 | Longitude() | Set the geographical longitude. | .Longitude(-122.4194) |
-| TemperatureUnit() | Set the temperature unit. (Celsius, Fahrenheit) | .TemperatureUnit(openmateo.Celsius) |
-| WindspeedUnit() | Set the wind speed unit. (KMH, MPH, etc.) | .WindspeedUnit(openmateo.MPH) |
-| PrecipitationUnit() | Set the precipitation unit. (MM, IN) | .PrecipitationUnit(openmateo.IN) |
+| TemperatureUnit() | Set the temperature unit. (Celsius, Fahrenheit) | .TemperatureUnit(openmeteogo.Celsius) |
+| WindspeedUnit() | Set the wind speed unit. (KMH, MPH, etc.) | .WindspeedUnit(openmeteogo.MPH) |
+| PrecipitationUnit() | Set the precipitation unit. (MM, IN) | .PrecipitationUnit(openmeteogo.IN) |
 | Timezone() | Set the timezone for results. | .Timezone(\*time.UTC) |
 | PastDays() | Request N number of past days of data. | .PastDays(7) |
 | ForcastDays() | Request N number of forecast days. | .ForcastDays(3) |
@@ -179,9 +179,9 @@ ShortwaveRadiationSum, Et0FaoEvapotranspiration
 
 You can specify the units for the following measurements:
 
-* **Temperature**: openmateo.Celsius (default), openmateo.Fahrenheit  
-* **Wind Speed**: openmateo.KMH (default), openmateo.MS, openmateo.MPH, openmateo.KN  
-* **Precipitation**: openmateo.MM (default), openmateo.IN
+* **Temperature**: openmeteogo.Celsius (default), openmeteogo.Fahrenheit  
+* **Wind Speed**: openmeteogo.KMH (default), openmeteogo.MS, openmeteogo.MPH, openmeteogo.KN  
+* **Precipitation**: openmeteogo.MM (default), openmeteogo.IN
 
 
 
@@ -190,14 +190,14 @@ Example:
 
 ```go
 // Request only current temperature and wind speed  
-current := &openmateo.CurrentMetrics{  
+current := &openmeteogo.CurrentMetrics{  
     Temperature2m: true,  
     WindSpeed10m: true,  
 }  
-opts := openmateo.NewOptionsBuilder().  
+opts := openmeteogo.NewOptionsBuilder().  
     Latitude(37.77).  
     Longitude(-122.41).  
-    TemperatureUnit(openmateo.Fahrenheit).  
+    TemperatureUnit(openmeteogo.Fahrenheit).  
     CurrentMetrics(current).  
     Build()  
 ```
