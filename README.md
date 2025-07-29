@@ -23,7 +23,7 @@ go libraries for Open Meteo, and because it made for a fun weekend project.
 To install the library, use go get:
 
 ```bash
-go get github.com/tpryan/openmateo
+go get github.com/tpryan/openmeteogo
 ```
 
 ## **Usage**

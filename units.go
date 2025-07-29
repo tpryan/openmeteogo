@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package openmateo
+package openmeteogo
 
 // TemperatureUnit defines the unit for temperature values.
 type TemperatureUnit int64
