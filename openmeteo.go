@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	defaultHost   = "api.open-meteo.com"
-	defaultScheme = "https"
+	defaultHost          = "api.open-meteo.com"
+	defaultScheme        = "https"
+	forecastHistoryLimit = 90 * 24 * time.Hour
 
 	// DefaultUserAgent is the default User-Agent string sent with HTTP requests.
 	DefaultUserAgent = "OpenMeteoGo-Client"
@@ -91,21 +92,19 @@ func NewClientWithKey(key string) *Client {
 }
 
 func (c *Client) url(o *Options) string {
-	path := "/v1/forecast"
-	prefixes := []string{}
 	host := c.host
+	path := "/v1/forecast"
 
-	if (!o.Start.IsZero()) && time.Since(o.Start) > 7*24*time.Hour {
-		prefixes = append(prefixes, "archive-")
+	// Determine if the request is for data older than the forecast API's history limit.
+	isHistorical := !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit
+
+	if isHistorical {
+		host = "archive-" + host
 		path = "/v1/archive"
 	}
 
 	if c.apiKey != "" {
-		prefixes = append(prefixes, "customer-")
-	}
-
-	for _, prefix := range prefixes {
-		host = prefix + host
+		host = "customer-" + host
 	}
 
 	u := url.URL{
