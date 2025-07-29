@@ -1,4 +1,4 @@
-module github.com/tpryan/openmateo
+module github.com/tpryan/openmateogo
 
 go 1.24.5
 

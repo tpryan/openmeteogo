@@ -196,7 +196,6 @@ func TestURL(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := tc.client.url(&tc.options)
 			assert.Equal(t, tc.want, got)
 		})
@@ -400,7 +399,6 @@ func TestParsing(t *testing.T) {
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			got := WeatherData{}
 
 			dat, err := os.ReadFile(tc.input)
