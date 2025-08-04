@@ -25,7 +25,7 @@ import (
 const (
 	defaultHost          = "api.open-meteo.com"
 	defaultScheme        = "https"
-	forecastHistoryLimit = 90 * 24 * time.Hour
+	forecastHistoryLimit = 7 * 24 * time.Hour
 
 	// DefaultUserAgent is the default User-Agent string sent with HTTP requests.
 	DefaultUserAgent = "OpenMeteoGo-Client"
