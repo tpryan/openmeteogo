@@ -189,12 +189,12 @@ func TestURL(t *testing.T) {
 		},
 		"hourly and daily": {
 			client:  NewClient(),
-			options: Options{HourlyMetrics: &HourlyMetrics{Temperature2m: true}, DailyMetrics: &DailyMetrics{Temperature2mMin: true}},
+			options: Options{HourlyMetrics: Metrics{Temperature2m}, DailyMetrics: Metrics{Temperature2mMin}},
 			want:    "https://api.open-meteo.com/v1/forecast?daily=temperature_2m_min&hourly=temperature_2m&latitude=0&longitude=0",
 		},
 		"current condition": {
 			client:  NewClient(),
-			options: Options{CurrentMetrics: &CurrentMetrics{Temperature2m: true}},
+			options: Options{CurrentMetrics: Metrics{Temperature2m}},
 			want:    "https://api.open-meteo.com/v1/forecast?current=temperature_2m&latitude=0&longitude=0",
 		},
 		"iota options": {

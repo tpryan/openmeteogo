@@ -27,8 +27,8 @@ const (
 	defaultScheme        = "https"
 	forecastHistoryLimit = 7 * 24 * time.Hour
 
-	// DefaultUserAgent is the default User-Agent string sent with HTTP requests.
-	DefaultUserAgent = "OpenMeteoGo-Client"
+	// defaultUserAgent is the default User-Agent string sent with HTTP requests.
+	defaultUserAgent = "OpenMeteoGo-Client"
 )
 
 // Client is used to interact with the Open-Meteo API.
@@ -74,7 +74,7 @@ func (c *Client) Get(o *Options) (*WeatherData, error) {
 func NewClient() *Client {
 	return &Client{
 		HTTPClient: http.DefaultClient,
-		UserAgent:  DefaultUserAgent,
+		UserAgent:  defaultUserAgent,
 		scheme:     defaultScheme,
 		host:       defaultHost,
 	}
@@ -85,7 +85,7 @@ func NewClientWithKey(key string) *Client {
 	return &Client{
 		apiKey:     key,
 		HTTPClient: http.DefaultClient,
-		UserAgent:  DefaultUserAgent,
+		UserAgent:  defaultUserAgent,
 		scheme:     defaultScheme,
 		host:       defaultHost,
 	}
@@ -122,16 +122,16 @@ func (c *Client) url(o *Options) string {
 	q.Set("latitude", fmt.Sprintf("%v", o.Latitude))
 	q.Set("longitude", fmt.Sprintf("%v", o.Longitude))
 
-	if o.TemperatureUnit > 0 {
-		q.Set("temperature_unit", o.TemperatureUnit.String())
+	if o.TemperatureUnit != "" {
+		q.Set("temperature_unit", string(o.TemperatureUnit))
 	}
 
-	if o.WindspeedUnit > 0 {
-		q.Set("windspeed_unit", o.WindspeedUnit.String())
+	if o.WindspeedUnit != "" {
+		q.Set("windspeed_unit", string(o.WindspeedUnit))
 	}
 
-	if o.PrecipitationUnit > 0 {
-		q.Set("precipitation_unit", o.PrecipitationUnit.String())
+	if o.PrecipitationUnit != "" {
+		q.Set("precipitation_unit", string(o.PrecipitationUnit))
 	}
 
 	if o.Timezone.String() != "" {

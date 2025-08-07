@@ -21,101 +21,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHourlyMetrics(t *testing.T) {
+func TestMetrics(t *testing.T) {
 
 	tests := map[string]struct {
-		input HourlyMetrics
+		input Metrics
 		want  string
 	}{
-		"basic": {
-			input: HourlyMetrics{Temperature2m: true, RelativeHumidity2m: true},
+		"hourly": {
+			input: Metrics{Temperature2m, RelativeHumidity2m},
 			want:  "temperature_2m,relative_humidity_2m",
 		},
-	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			got := tc.input.encode()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestDailyMetrics(t *testing.T) {
-
-	tests := map[string]struct {
-		input DailyMetrics
-		want  string
-	}{
-		"basic": {
-			input: DailyMetrics{WeatherCode: true, Temperature2mMax: true},
+		"daily": {
+			input: Metrics{WeatherCode, Temperature2mMax},
 			want:  "weather_code,temperature_2m_max",
 		},
-	}
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			got := tc.input.encode()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestCurrentMetrics(t *testing.T) {
-
-	tests := map[string]struct {
-		input CurrentMetrics
-		want  string
-	}{
-		"basic": {
-			input: CurrentMetrics{Temperature2m: true, RelativeHumidity2m: true},
+		"current": {
+			input: Metrics{Temperature2m, RelativeHumidity2m},
 			want:  "temperature_2m,relative_humidity_2m",
 		},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			got := tc.input.encode()
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
-func TestEncodeMetrics(t *testing.T) {
-
-	type testStruct struct {
-		A bool   `json:"a"`
-		B bool   `json:"b"`
-		C string `json:"c"`
-		D bool   `json:"d"`
-	}
-
-	tests := map[string]struct {
-		input interface{}
-		want  string
-	}{
-		"some true": {
-			input: testStruct{A: true, B: false, C: "hello", D: true},
-			want:  "a,d",
-		},
-		"all true": {
-			input: testStruct{A: true, B: true, D: true},
-			want:  "a,b,d",
-		},
-		"none true": {
-			input: testStruct{A: false, B: false, D: false},
-			want:  "",
-		},
-		"pointer to struct": {
-			input: &testStruct{A: true, B: true, D: false},
-			want:  "a,b",
-		},
-		"empty struct": {
-			input: struct{}{},
-			want:  "",
-		},
-	}
-
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			got := encodeMetrics(tc.input)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -126,9 +53,15 @@ func TestOptionsBuilder(t *testing.T) {
 	start := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2023, 1, 2, 0, 0, 0, 0, time.UTC)
 	tz, _ := time.LoadLocation("UTC")
-	hourly := &HourlyMetrics{Temperature2m: true}
-	daily := &DailyMetrics{WeatherCode: true}
-	current := &CurrentMetrics{IsDay: true}
+
+	hourly, err := NewMetrics("hourly", Temperature2m, RelativeHumidity2m)
+	assert.NoError(t, err)
+
+	daily, err := NewMetrics("daily", WeatherCode)
+	assert.NoError(t, err)
+
+	current, err := NewMetrics("current", IsDay)
+	assert.NoError(t, err)
 
 	opts := NewOptionsBuilder().
 		Latitude(12.34).
