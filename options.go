@@ -24,9 +24,9 @@ import (
 // Options holds all the parameters for a weather data request.
 // It is configured using the OptionsBuilder.
 type Options struct {
-	// Latitude for the weather forecast.
+	// Latitude for the location to which the weather forecast refers.
 	Latitude float64
-	// Longitude for the weather forecast.
+	// Longitude for the location to which the weather forecast refers.
 	Longitude float64
 	// TemperatureUnit sets the unit for temperature values. Default is Celsius.
 	TemperatureUnit TemperatureUnit
