@@ -1,5 +1,8 @@
 # **OpenMeteo Go Client**
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![GoDoc](https://godoc.org/github.com/tpryan/openmeteogo?status.svg)](https://godoc.org/github.com/tpryan/openmeteogo)
+
 A simple and easy-to-use Go client for the 
 [Open-Meteo API](https://open-meteo.com/). This library provides a convenient
 way to fetch current, historical, and forecasted weather data.
