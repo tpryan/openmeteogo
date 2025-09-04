@@ -33,14 +33,14 @@ func main() {
 		Latitude(37.7749).Longitude(-122.4194).
 		TemperatureUnit(openmeteogo.Fahrenheit).
 		ForcastDays(1).
-		CurrentMetrics(&openmeteogo.CurrentMetrics{
-			Temperature2m: true,
-			WeatherCode:   true,
+		CurrentMetrics(openmeteogo.Metrics{
+			openmeteogo.Temperature2m,
+			openmeteogo.WeatherCode,
 		}).
-		DailyMetrics(&openmeteogo.DailyMetrics{
-			Temperature2mMax: true,
-			Temperature2mMin: true,
-			WeatherCode:      true,
+		DailyMetrics(openmeteogo.Metrics{
+			openmeteogo.Temperature2mMax,
+			openmeteogo.Temperature2mMin,
+			openmeteogo.WeatherCode,
 		}).
 		Build()
 
@@ -67,10 +67,10 @@ func main() {
 	pastOpts := openmeteogo.NewOptionsBuilder().
 		Latitude(37.7749).Longitude(-122.4194).
 		TemperatureUnit(openmeteogo.Fahrenheit).
-		DailyMetrics(&openmeteogo.DailyMetrics{
-			Temperature2mMax: true,
-			Temperature2mMin: true,
-			WeatherCode:      true,
+		DailyMetrics(openmeteogo.Metrics{
+			openmeteogo.Temperature2mMax,
+			openmeteogo.Temperature2mMin,
+			openmeteogo.WeatherCode,
 		}).
 		Start(time.Date(2025, 7, 15, 0, 0, 0, 0, time.UTC)).End(time.Date(2025, 7, 26, 0, 0, 0, 0, time.UTC)).
 		Build()
