@@ -27,6 +27,7 @@ const (
 	defaultHost          = "api.open-meteo.com"
 	defaultScheme        = "https"
 	defaultSeasonalHost  = "seasonal-api.open-meteo.com"
+	defaultMarineHost    = "marine-api.open-meteo.com"
 	forecastHistoryLimit = 7 * 24 * time.Hour
 
 	// defaultUserAgent is the default User-Agent string sent with HTTP requests.
@@ -38,11 +39,12 @@ type Client struct {
 	// UserAgent is the string sent in the User-Agent header of the request.
 	UserAgent string
 	// HTTPClient allows for a custom http.Client to be used for requests.
-	HTTPClient *http.Client
-	apiKey     string
-	scheme     string
-	host       string
+	HTTPClient   *http.Client
+	apiKey       string
+	scheme       string
+	host         string
 	seasonalHost string
+	marineHost   string
 }
 
 // Get fetches weather data based on the provided Options.
@@ -81,6 +83,7 @@ func NewClient() *Client {
 		scheme:       defaultScheme,
 		host:         defaultHost,
 		seasonalHost: defaultSeasonalHost,
+		marineHost:   defaultMarineHost,
 	}
 }
 
@@ -93,6 +96,7 @@ func NewClientWithKey(key string) *Client {
 		scheme:       defaultScheme,
 		host:         defaultHost,
 		seasonalHost: defaultSeasonalHost,
+		marineHost:   defaultMarineHost,
 	}
 }
 
@@ -103,10 +107,16 @@ func (c *Client) url(o *Options) string {
 	// Determine if the request is for seasonal data.
 	isSeasonal := o.Seasonal || len(o.Models) > 0 || len(o.WeeklyMetrics) > 0 || len(o.MonthlyMetrics) > 0
 
+	// Determine if the request is for marine data.
+	isMarine := o.Marine
+
 	// Determine if the request is for data older than the forecast API's history limit.
 	isHistorical := !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit
 
-	if isSeasonal {
+	if isMarine {
+		host = c.marineHost
+		path = "/v1/marine"
+	} else if isSeasonal {
 		host = c.seasonalHost
 		path = "/v1/seasonal"
 	} else if isHistorical {
@@ -204,7 +214,7 @@ func (c *Client) encodeCommonOptions(q url.Values, o *Options) {
 	if !o.End.IsZero() {
 		q.Set("end_date", o.End.Format("2006-01-02"))
 	}
-	
+
 	if o.PastDays > 0 {
 		q.Set("past_days", fmt.Sprintf("%v", o.PastDays))
 	}
@@ -275,94 +285,138 @@ type Current struct {
 
 // HourlyUnits describes the units for the hourly forecast data.
 type HourlyUnits struct {
-	Time                     string `json:"time"`
-	Temperature2m            string `json:"temperature_2m"`
-	RelativeHumidity2m       string `json:"relative_humidity_2m"`
-	DewPoint2m               string `json:"dew_point_2m"`
-	ApparentTemperature      string `json:"apparent_temperature"`
-	PrecipitationProbability string `json:"precipitation_probability"`
-	Precipitation            string `json:"precipitation"`
-	Rain                     string `json:"rain"`
-	Showers                  string `json:"showers"`
-	Snowfall                 string `json:"snowfall"`
-	SnowDepth                string `json:"snow_depth"`
-	WeatherCode              string `json:"weather_code"`
-	PressureMsl              string `json:"pressure_msl"`
-	SurfacePressure          string `json:"surface_pressure"`
-	CloudCover               string `json:"cloud_cover"`
-	CloudCoverLow            string `json:"cloud_cover_low"`
-	CloudCoverMid            string `json:"cloud_cover_mid"`
-	CloudCoverHigh           string `json:"cloud_cover_high"`
-	Evapotranspiration       string `json:"evapotranspiration"`
-	Visibility               string `json:"visibility"`
-	Et0FaoEvapotranspiration string `json:"et0_fao_evapotranspiration"`
-	VapourPressureDeficit    string `json:"vapour_pressure_deficit"`
-	WindSpeed10m             string `json:"wind_speed_10m"`
-	WindSpeed80m             string `json:"wind_speed_80m"`
-	WindSpeed120m            string `json:"wind_speed_120m"`
-	WindSpeed180m            string `json:"wind_speed_180m"`
-	WindDirection10m         string `json:"wind_direction_10m"`
-	WindDirection80m         string `json:"wind_direction_80m"`
-	WindDirection120m        string `json:"wind_direction_120m"`
-	WindDirection180m        string `json:"wind_direction_180m"`
-	WindGusts10m             string `json:"wind_gusts_10m"`
-	Temperature80m           string `json:"temperature_80m"`
-	Temperature120m          string `json:"temperature_120m"`
-	Temperature180m          string `json:"temperature_180m"`
-	SoilTemperature0cm       string `json:"soil_temperature_0cm"`
-	SoilTemperature6cm       string `json:"soil_temperature_6cm"`
-	SoilTemperature18cm      string `json:"soil_temperature_18cm"`
-	SoilTemperature54cm      string `json:"soil_temperature_54cm"`
-	SoilMoisture0To1cm       string `json:"soil_moisture_0_to_1cm"`
-	SoilMoisture1To3cm       string `json:"soil_moisture_1_to_3cm"`
-	SoilMoisture9To27cm      string `json:"soil_moisture_9_to_27cm"`
-	SoilMoisture3To9cm       string `json:"soil_moisture_3_to_9cm"`
+	Time                        string `json:"time"`
+	Temperature2m               string `json:"temperature_2m"`
+	RelativeHumidity2m          string `json:"relative_humidity_2m"`
+	DewPoint2m                  string `json:"dew_point_2m"`
+	ApparentTemperature         string `json:"apparent_temperature"`
+	PrecipitationProbability    string `json:"precipitation_probability"`
+	Precipitation               string `json:"precipitation"`
+	Rain                        string `json:"rain"`
+	Showers                     string `json:"showers"`
+	Snowfall                    string `json:"snowfall"`
+	SnowDepth                   string `json:"snow_depth"`
+	WeatherCode                 string `json:"weather_code"`
+	PressureMsl                 string `json:"pressure_msl"`
+	SurfacePressure             string `json:"surface_pressure"`
+	CloudCover                  string `json:"cloud_cover"`
+	CloudCoverLow               string `json:"cloud_cover_low"`
+	CloudCoverMid               string `json:"cloud_cover_mid"`
+	CloudCoverHigh              string `json:"cloud_cover_high"`
+	Evapotranspiration          string `json:"evapotranspiration"`
+	Visibility                  string `json:"visibility"`
+	Et0FaoEvapotranspiration    string `json:"et0_fao_evapotranspiration"`
+	VapourPressureDeficit       string `json:"vapour_pressure_deficit"`
+	WindSpeed10m                string `json:"wind_speed_10m"`
+	WindSpeed80m                string `json:"wind_speed_80m"`
+	WindSpeed120m               string `json:"wind_speed_120m"`
+	WindSpeed180m               string `json:"wind_speed_180m"`
+	WindDirection10m            string `json:"wind_direction_10m"`
+	WindDirection80m            string `json:"wind_direction_80m"`
+	WindDirection120m           string `json:"wind_direction_120m"`
+	WindDirection180m           string `json:"wind_direction_180m"`
+	WindGusts10m                string `json:"wind_gusts_10m"`
+	Temperature80m              string `json:"temperature_80m"`
+	Temperature120m             string `json:"temperature_120m"`
+	Temperature180m             string `json:"temperature_180m"`
+	SoilTemperature0cm          string `json:"soil_temperature_0cm"`
+	SoilTemperature6cm          string `json:"soil_temperature_6cm"`
+	SoilTemperature18cm         string `json:"soil_temperature_18cm"`
+	SoilTemperature54cm         string `json:"soil_temperature_54cm"`
+	SoilMoisture0To1cm          string `json:"soil_moisture_0_to_1cm"`
+	SoilMoisture1To3cm          string `json:"soil_moisture_1_to_3cm"`
+	SoilMoisture9To27cm         string `json:"soil_moisture_9_to_27cm"`
+	SoilMoisture3To9cm          string `json:"soil_moisture_3_to_9cm"`
+	WaveHeight                  string `json:"wave_height"`
+	WaveDirection               string `json:"wave_direction"`
+	WavePeriod                  string `json:"wave_period"`
+	WavePeakPeriod              string `json:"wave_peak_period"`
+	WindWaveHeight              string `json:"wind_wave_height"`
+	WindWaveDirection           string `json:"wind_wave_direction"`
+	WindWavePeriod              string `json:"wind_wave_period"`
+	WindWavePeakPeriod          string `json:"wind_wave_peak_period"`
+	SwellWaveHeight             string `json:"swell_wave_height"`
+	SwellWaveDirection          string `json:"swell_wave_direction"`
+	SwellWavePeriod             string `json:"swell_wave_period"`
+	SwellWavePeakPeriod         string `json:"swell_wave_peak_period"`
+	SecondarySwellWaveHeight    string `json:"secondary_swell_wave_height"`
+	SecondarySwellWaveDirection string `json:"secondary_swell_wave_direction"`
+	SecondarySwellWavePeriod    string `json:"secondary_swell_wave_period"`
+	TertiarySwellWaveHeight     string `json:"tertiary_swell_wave_height"`
+	TertiarySwellWaveDirection  string `json:"tertiary_swell_wave_direction"`
+	TertiarySwellWavePeriod     string `json:"tertiary_swell_wave_period"`
+	SeaLevelHeight              string `json:"sea_level_height"`
+	SeaSurfaceTemperature       string `json:"sea_surface_temperature"`
+	OceanCurrentVelocity        string `json:"ocean_current_velocity"`
+	OceanCurrentDirection       string `json:"ocean_current_direction"`
 }
 
 // Hourly holds slices for each hourly forecast metric.
 type Hourly struct {
-	Time                     []string  `json:"time"`
-	Temperature2m            []float64 `json:"temperature_2m"`
-	RelativeHumidity2m       []int     `json:"relative_humidity_2m"`
-	DewPoint2m               []float64 `json:"dew_point_2m"`
-	ApparentTemperature      []float64 `json:"apparent_temperature"`
-	PrecipitationProbability []int     `json:"precipitation_probability"`
-	Precipitation            []float64 `json:"precipitation"`
-	Rain                     []float64 `json:"rain"`
-	Showers                  []float64 `json:"showers"`
-	Snowfall                 []float64 `json:"snowfall"`
-	SnowDepth                []float64 `json:"snow_depth"`
-	WeatherCode              []int     `json:"weather_code"`
-	PressureMsl              []float64 `json:"pressure_msl"`
-	SurfacePressure          []float64 `json:"surface_pressure"`
-	CloudCover               []int     `json:"cloud_cover"`
-	CloudCoverLow            []int     `json:"cloud_cover_low"`
-	CloudCoverMid            []int     `json:"cloud_cover_mid"`
-	CloudCoverHigh           []int     `json:"cloud_cover_high"`
-	Evapotranspiration       []float64 `json:"evapotranspiration"`
-	Visibility               []float64 `json:"visibility"`
-	Et0FaoEvapotranspiration []float64 `json:"et0_fao_evapotranspiration"`
-	VapourPressureDeficit    []float64 `json:"vapour_pressure_deficit"`
-	WindSpeed10m             []float64 `json:"wind_speed_10m"`
-	WindSpeed80m             []float64 `json:"wind_speed_80m"`
-	WindSpeed120m            []float64 `json:"wind_speed_120m"`
-	WindSpeed180m            []float64 `json:"wind_speed_180m"`
-	WindDirection10m         []int     `json:"wind_direction_10m"`
-	WindDirection80m         []int     `json:"wind_direction_80m"`
-	WindDirection120m        []int     `json:"wind_direction_120m"`
-	WindDirection180m        []int     `json:"wind_direction_180m"`
-	WindGusts10m             []float64 `json:"wind_gusts_10m"`
-	Temperature80m           []float64 `json:"temperature_80m"`
-	Temperature120m          []float64 `json:"temperature_120m"`
-	Temperature180m          []float64 `json:"temperature_180m"`
-	SoilTemperature0cm       []float64 `json:"soil_temperature_0cm"`
-	SoilTemperature6cm       []float64 `json:"soil_temperature_6cm"`
-	SoilTemperature18cm      []float64 `json:"soil_temperature_18cm"`
-	SoilTemperature54cm      []float64 `json:"soil_temperature_54cm"`
-	SoilMoisture0To1cm       []float64 `json:"soil_moisture_0_to_1cm"`
-	SoilMoisture1To3cm       []float64 `json:"soil_moisture_1_to_3cm"`
-	SoilMoisture9To27cm      []float64 `json:"soil_moisture_9_to_27cm"`
-	SoilMoisture3To9cm       []float64 `json:"soil_moisture_3_to_9cm"`
+	Time                        []string  `json:"time"`
+	Temperature2m               []float64 `json:"temperature_2m"`
+	RelativeHumidity2m          []int     `json:"relative_humidity_2m"`
+	DewPoint2m                  []float64 `json:"dew_point_2m"`
+	ApparentTemperature         []float64 `json:"apparent_temperature"`
+	PrecipitationProbability    []int     `json:"precipitation_probability"`
+	Precipitation               []float64 `json:"precipitation"`
+	Rain                        []float64 `json:"rain"`
+	Showers                     []float64 `json:"showers"`
+	Snowfall                    []float64 `json:"snowfall"`
+	SnowDepth                   []float64 `json:"snow_depth"`
+	WeatherCode                 []int     `json:"weather_code"`
+	PressureMsl                 []float64 `json:"pressure_msl"`
+	SurfacePressure             []float64 `json:"surface_pressure"`
+	CloudCover                  []int     `json:"cloud_cover"`
+	CloudCoverLow               []int     `json:"cloud_cover_low"`
+	CloudCoverMid               []int     `json:"cloud_cover_mid"`
+	CloudCoverHigh              []int     `json:"cloud_cover_high"`
+	Evapotranspiration          []float64 `json:"evapotranspiration"`
+	Visibility                  []float64 `json:"visibility"`
+	Et0FaoEvapotranspiration    []float64 `json:"et0_fao_evapotranspiration"`
+	VapourPressureDeficit       []float64 `json:"vapour_pressure_deficit"`
+	WindSpeed10m                []float64 `json:"wind_speed_10m"`
+	WindSpeed80m                []float64 `json:"wind_speed_80m"`
+	WindSpeed120m               []float64 `json:"wind_speed_120m"`
+	WindSpeed180m               []float64 `json:"wind_speed_180m"`
+	WindDirection10m            []int     `json:"wind_direction_10m"`
+	WindDirection80m            []int     `json:"wind_direction_80m"`
+	WindDirection120m           []int     `json:"wind_direction_120m"`
+	WindDirection180m           []int     `json:"wind_direction_180m"`
+	WindGusts10m                []float64 `json:"wind_gusts_10m"`
+	Temperature80m              []float64 `json:"temperature_80m"`
+	Temperature120m             []float64 `json:"temperature_120m"`
+	Temperature180m             []float64 `json:"temperature_180m"`
+	SoilTemperature0cm          []float64 `json:"soil_temperature_0cm"`
+	SoilTemperature6cm          []float64 `json:"soil_temperature_6cm"`
+	SoilTemperature18cm         []float64 `json:"soil_temperature_18cm"`
+	SoilTemperature54cm         []float64 `json:"soil_temperature_54cm"`
+	SoilMoisture0To1cm          []float64 `json:"soil_moisture_0_to_1cm"`
+	SoilMoisture1To3cm          []float64 `json:"soil_moisture_1_to_3cm"`
+	SoilMoisture9To27cm         []float64 `json:"soil_moisture_9_to_27cm"`
+	SoilMoisture3To9cm          []float64 `json:"soil_moisture_3_to_9cm"`
+	WaveHeight                  []float64 `json:"wave_height"`
+	WaveDirection               []float64 `json:"wave_direction"`
+	WavePeriod                  []float64 `json:"wave_period"`
+	WavePeakPeriod              []float64 `json:"wave_peak_period"`
+	WindWaveHeight              []float64 `json:"wind_wave_height"`
+	WindWaveDirection           []float64 `json:"wind_wave_direction"`
+	WindWavePeriod              []float64 `json:"wind_wave_period"`
+	WindWavePeakPeriod          []float64 `json:"wind_wave_peak_period"`
+	SwellWaveHeight             []float64 `json:"swell_wave_height"`
+	SwellWaveDirection          []float64 `json:"swell_wave_direction"`
+	SwellWavePeriod             []float64 `json:"swell_wave_period"`
+	SwellWavePeakPeriod         []float64 `json:"swell_wave_peak_period"`
+	SecondarySwellWaveHeight    []float64 `json:"secondary_swell_wave_height"`
+	SecondarySwellWaveDirection []float64 `json:"secondary_swell_wave_direction"`
+	SecondarySwellWavePeriod    []float64 `json:"secondary_swell_wave_period"`
+	TertiarySwellWaveHeight     []float64 `json:"tertiary_swell_wave_height"`
+	TertiarySwellWaveDirection  []float64 `json:"tertiary_swell_wave_direction"`
+	TertiarySwellWavePeriod     []float64 `json:"tertiary_swell_wave_period"`
+	SeaLevelHeight              []float64 `json:"sea_level_height"`
+	SeaSurfaceTemperature       []float64 `json:"sea_surface_temperature"`
+	OceanCurrentVelocity        []float64 `json:"ocean_current_velocity"`
+	OceanCurrentDirection       []float64 `json:"ocean_current_direction"`
 }
 
 // DailyUnits describes the units for the daily forecast data.
@@ -390,6 +444,17 @@ type DailyUnits struct {
 	WindDirection10mDominant    string `json:"wind_direction_10m_dominant"`
 	ShortwaveRadiationSum       string `json:"shortwave_radiation_sum"`
 	Et0FaoEvapotranspiration    string `json:"et0_fao_evapotranspiration"`
+	WaveHeightMax               string `json:"wave_height_max"`
+	WaveDirectionDominant       string `json:"wave_direction_dominant"`
+	WavePeriodMax               string `json:"wave_period_max"`
+	WindWaveHeightMax           string `json:"wind_wave_height_max"`
+	WindWaveDirectionDominant   string `json:"wind_wave_direction_dominant"`
+	WindWavePeriodMax           string `json:"wind_wave_period_max"`
+	WindWavePeakPeriodMax       string `json:"wind_wave_peak_period_max"`
+	SwellWaveHeightMax          string `json:"swell_wave_height_max"`
+	SwellWaveDirectionDominant  string `json:"swell_wave_direction_dominant"`
+	SwellWavePeriodMax          string `json:"swell_wave_period_max"`
+	SwellWavePeakPeriodMax      string `json:"swell_wave_peak_period_max"`
 }
 
 // Daily holds slices for each daily forecast metric.
@@ -417,6 +482,17 @@ type Daily struct {
 	WindDirection10mDominant    []int     `json:"wind_direction_10m_dominant"`
 	ShortwaveRadiationSum       []float64 `json:"shortwave_radiation_sum"`
 	Et0FaoEvapotranspiration    []float64 `json:"et0_fao_evapotranspiration"`
+	WaveHeightMax               []float64 `json:"wave_height_max"`
+	WaveDirectionDominant       []float64 `json:"wave_direction_dominant"`
+	WavePeriodMax               []float64 `json:"wave_period_max"`
+	WindWaveHeightMax           []float64 `json:"wind_wave_height_max"`
+	WindWaveDirectionDominant   []float64 `json:"wind_wave_direction_dominant"`
+	WindWavePeriodMax           []float64 `json:"wind_wave_period_max"`
+	WindWavePeakPeriodMax       []float64 `json:"wind_wave_peak_period_max"`
+	SwellWaveHeightMax          []float64 `json:"swell_wave_height_max"`
+	SwellWaveDirectionDominant  []float64 `json:"swell_wave_direction_dominant"`
+	SwellWavePeriodMax          []float64 `json:"swell_wave_period_max"`
+	SwellWavePeakPeriodMax      []float64 `json:"swell_wave_peak_period_max"`
 }
 
 // WeeklyUnits describes the units for the weekly seasonal forecast data.
