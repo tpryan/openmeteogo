@@ -124,6 +124,69 @@ To get historical data, simply provide a Start and End date. The client will aut
     }
 ```    
 
+### **Seasonal Forecast**
+
+To fetch seasonal forecasts, use the `.Seasonal(true)` option. You can request specific `Models`, as well as `WeeklyMetrics` and `MonthlyMetrics`.
+
+```go
+    // Fetch seasonal forecast
+    seasonalOpts := openmeteogo.NewOptionsBuilder().
+        Latitude(37.7749).
+        Longitude(-122.4194).
+        Seasonal(true).
+        Models([]string{"ecmwf_seas5"}). // Optional: specify models
+        WeeklyMetrics(openmeteogo.Metrics{
+            openmeteogo.Temperature2mMean,
+            openmeteogo.PrecipitationMean,
+        }).
+        MonthlyMetrics(openmeteogo.Metrics{
+            openmeteogo.Temperature2mMean,
+        }).
+        Build()
+
+    sw, err := c.Get(seasonalOpts)
+    if err != nil {
+        log.Fatalf("Failed to get seasonal data: %v", err)
+    }
+
+    // Access Weekly Data
+    for i, date := range sw.Weekly.Time {
+        fmt.Printf("Week %s: Mean Temp: %.2f%s\n", date, sw.Weekly.Temperature2mMean[i], sw.WeeklyUnits.Temperature2mMean)
+    }
+```
+
+### **Marine Weather**
+
+To fetch marine weather data (wave height, swell, etc.), use the `.Marine(true)` option. You can request marine-specific metrics via `HourlyMetrics` and `DailyMetrics`.
+
+```go
+    // Fetch marine weather
+    marineOpts := openmeteogo.NewOptionsBuilder().
+        Latitude(37.7749).
+        Longitude(-122.4194).
+        Marine(true).
+        HourlyMetrics(openmeteogo.Metrics{
+            openmeteogo.WaveHeight,
+            openmeteogo.WaveDirection,
+            openmeteogo.SwellWaveHeight,
+        }).
+        DailyMetrics(openmeteogo.Metrics{
+            openmeteogo.WaveHeightMax,
+        }).
+        Build()
+
+    mw, err := c.Get(marineOpts)
+    if err != nil {
+        log.Fatalf("Failed to get marine data: %v", err)
+    }
+
+    // Access Hourly Marine Data
+    if len(mw.Hourly.Time) > 0 {
+        fmt.Printf("Marine Forecast for %s:\n", mw.Hourly.Time[0])
+        fmt.Printf("  Wave Height: %.2f%s\n", mw.Hourly.WaveHeight[0], mw.HourlyUnits.WaveHeight)
+    }
+```
+
 ## **Options**
 
 The OptionsBuilder provides a simple way to configure your request.
@@ -140,9 +203,14 @@ The OptionsBuilder provides a simple way to configure your request.
 | ForcastDays() | Request N number of forecast days. | .ForcastDays(3) |
 | Start() | Set a start date for historical queries. | .Start(time.Now()) |
 | End() | Set an end date for historical queries. | .End(time.Now()) |
+| Seasonal() | Enable Seasonal API. | .Seasonal(true) |
+| Marine() | Enable Marine API. | .Marine(true) |
+| Models() | Set specific weather models (Seasonal/Marine). | .Models([]string{"ecmwf_seas5"}) |
 | CurrentMetrics() | Select which current metrics to fetch. | .CurrentMetrics(\&CurrentMetrics{...}) |
 | DailyMetrics() | Select which daily metrics to fetch. | .DailyMetrics(\&DailyMetrics{...}) |
 | HourlyMetrics() | Select which hourly metrics to fetch. | .HourlyMetrics(\&HourlyMetrics{...}) |
+| WeeklyMetrics() | Select which weekly metrics to fetch (Seasonal). | .WeeklyMetrics(\&Metrics{...}) |
+| MonthlyMetrics() | Select which monthly metrics to fetch (Seasonal). | .MonthlyMetrics(\&Metrics{...}) |
 
 ### **Available Metrics**
 
@@ -168,7 +236,14 @@ WindSpeed120m, WindSpeed180m, WindDirection10m, WindDirection80m,
 WindDirection120m, WindDirection180m, WindGusts10m, Temperature80m,
 Temperature120m, Temperature180m, SoilTemperature0cm, SoilTemperature6cm,
 SoilTemperature18cm, SoilTemperature54cm, SoilMoisture0To1cm,
-SoilMoisture1To3cm, SoilMoisture9To27cm, SoilMoisture3To9cm
+SoilMoisture1To3cm, SoilMoisture9To27cm, SoilMoisture3To9cm,
+WaveHeight, WaveDirection, WavePeriod, WavePeakPeriod, WindWaveHeight,
+WindWaveDirection, WindWavePeriod, WindWavePeakPeriod, SwellWaveHeight,
+SwellWaveDirection, SwellWavePeriod, SwellWavePeakPeriod,
+SecondarySwellWaveHeight, SecondarySwellWaveDirection, SecondarySwellWavePeriod,
+TertiarySwellWaveHeight, TertiarySwellWaveDirection, TertiarySwellWavePeriod,
+SeaLevelHeight, SeaSurfaceTemperature, OceanCurrentVelocity,
+OceanCurrentDirection
 
 ### **Daily Metrics**
 
@@ -177,7 +252,18 @@ ApparentTemperatureMin, Sunrise, Sunset, SunshineDuration, DaylightDuration,
 UvIndexMax, UvIndexClearSkyMax, RainSum, ShowersSum, SnowfallSum,
 PrecipitationSum, PrecipitationHours, PrecipitationProbabilityMax,
 WindSpeed10mMax, WindGusts10mMax, WindDirection10mDominant,
-ShortwaveRadiationSum, Et0FaoEvapotranspiration
+ShortwaveRadiationSum, Et0FaoEvapotranspiration, WaveHeightMax,
+WaveDirectionDominant, WavePeriodMax, WindWaveHeightMax,
+WindWaveDirectionDominant, WindWavePeriodMax, WindWavePeakPeriodMax,
+SwellWaveHeightMax, SwellWaveDirectionDominant, SwellWavePeriodMax,
+SwellWavePeakPeriodMax
+
+### **Weekly & Monthly Metrics (Seasonal)**
+
+Temperature2mMean, Temperature2mAnomaly, Temperature2mMaxMean,
+Temperature2mMinMean, DewPoint2mMean, PrecipitationMean, PrecipitationAnomaly,
+PressureMslMean, PressureMslAnomaly, SoilMoisture0To10cmMean,
+SoilMoisture0To10cmAnomaly
 
 ## **Available Units**
 
