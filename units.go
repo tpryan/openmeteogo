@@ -45,5 +45,5 @@ const (
 	// MM is the default precipitation unit (millimeters).
 	MM PrecipitationUnit = "mm"
 	// IN is inches.
-	IN PrecipitationUnit = "in"
+	IN PrecipitationUnit = "inch"
 )
