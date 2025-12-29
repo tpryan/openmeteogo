@@ -44,12 +44,20 @@ type Options struct {
 	Start time.Time
 	// End date for the historical data query.
 	End time.Time
+	// Models specifies the weather models to use (e.g. "ecmwf_seas5").
+	Models []string
 	// HourlyMetrics specifies which hourly weather variables to retrieve.
 	HourlyMetrics Metrics
 	// DailyMetrics specifies which daily weather variables to retrieve.
 	DailyMetrics Metrics
+	// WeeklyMetrics specifies which weekly weather variables to retrieve (Seasonal API).
+	WeeklyMetrics Metrics
+	// MonthlyMetrics specifies which monthly weather variables to retrieve (Seasonal API).
+	MonthlyMetrics Metrics
 	// CurrentMetrics specifies which current weather variables to retrieve.
 	CurrentMetrics Metrics
+	// Seasonal forces the request to use the seasonal API endpoint.
+	Seasonal bool
 }
 
 // OptionsBuilder provides a fluent interface for constructing an Options object.
@@ -122,6 +130,12 @@ func (b *OptionsBuilder) End(end time.Time) *OptionsBuilder {
 	return b
 }
 
+// Models sets the specific weather models to be used.
+func (b *OptionsBuilder) Models(models []string) *OptionsBuilder {
+	b.options.Models = models
+	return b
+}
+
 // HourlyMetrics sets the specific hourly metrics to be fetched.
 func (b *OptionsBuilder) HourlyMetrics(metrics Metrics) *OptionsBuilder {
 	b.options.HourlyMetrics = metrics
@@ -134,9 +148,27 @@ func (b *OptionsBuilder) DailyMetrics(metrics Metrics) *OptionsBuilder {
 	return b
 }
 
+// WeeklyMetrics sets the specific weekly metrics to be fetched (Seasonal API).
+func (b *OptionsBuilder) WeeklyMetrics(metrics Metrics) *OptionsBuilder {
+	b.options.WeeklyMetrics = metrics
+	return b
+}
+
+// MonthlyMetrics sets the specific monthly metrics to be fetched (Seasonal API).
+func (b *OptionsBuilder) MonthlyMetrics(metrics Metrics) *OptionsBuilder {
+	b.options.MonthlyMetrics = metrics
+	return b
+}
+
 // CurrentMetrics sets the specific current weather metrics to be fetched.
 func (b *OptionsBuilder) CurrentMetrics(metrics Metrics) *OptionsBuilder {
 	b.options.CurrentMetrics = metrics
+	return b
+}
+
+// Seasonal forces the request to use the seasonal API endpoint.
+func (b *OptionsBuilder) Seasonal(seasonal bool) *OptionsBuilder {
+	b.options.Seasonal = seasonal
 	return b
 }
 
@@ -221,6 +253,19 @@ const (
 	WindGusts10mMax             Metric = "wind_gusts_10m_max"
 	WindDirection10mDominant    Metric = "wind_direction_10m_dominant"
 	ShortwaveRadiationSum       Metric = "shortwave_radiation_sum"
+
+	// Seasonal Metrics (Weekly & Monthly)
+	Temperature2mMean          Metric = "temperature_2m_mean"
+	Temperature2mAnomaly       Metric = "temperature_2m_anomaly"
+	Temperature2mMaxMean       Metric = "temperature_2m_max_mean"
+	Temperature2mMinMean       Metric = "temperature_2m_min_mean"
+	DewPoint2mMean             Metric = "dew_point_2m_mean"
+	PrecipitationMean          Metric = "precipitation_mean"
+	PrecipitationAnomaly       Metric = "precipitation_anomaly"
+	PressureMslMean            Metric = "pressure_msl_mean"
+	PressureMslAnomaly         Metric = "pressure_msl_anomaly"
+	SoilMoisture0To10cmMean    Metric = "soil_moisture_0_to_10cm_mean"
+	SoilMoisture0To10cmAnomaly Metric = "soil_moisture_0_to_10cm_anomaly"
 )
 
 var hourlyMetrics = []Metric{
@@ -278,6 +323,12 @@ func NewMetrics(metricType string, Metrics ...Metric) (Metrics, error) {
 		allowed = dailyMetrics
 	case "current":
 		allowed = currentMetrics
+	case "weekly":
+		// TODO: Define strict list for weekly if needed
+		return Metrics, nil
+	case "monthly":
+		// TODO: Define strict list for monthly if needed
+		return Metrics, nil
 	}
 
 	for _, metric := range Metrics {
