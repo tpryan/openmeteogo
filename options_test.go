@@ -39,6 +39,18 @@ func TestMetrics(t *testing.T) {
 			input: Metrics{Temperature2m, RelativeHumidity2m},
 			want:  "temperature_2m,relative_humidity_2m",
 		},
+		"marine hourly": {
+			input: Metrics{WaveHeight, SwellWavePeriod, OceanCurrentVelocity},
+			want:  "wave_height,swell_wave_period,ocean_current_velocity",
+		},
+		"marine daily": {
+			input: Metrics{WaveHeightMax, WaveDirectionDominant},
+			want:  "wave_height_max,wave_direction_dominant",
+		},
+		"empty": {
+			input: Metrics{},
+			want:  "",
+		},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -92,4 +104,38 @@ func TestOptionsBuilder(t *testing.T) {
 	assert.Equal(t, hourly, opts.HourlyMetrics)
 	assert.Equal(t, daily, opts.DailyMetrics)
 	assert.Equal(t, current, opts.CurrentMetrics)
+	// Marine is opt-in, so a request that never mentions it stays on the
+	// forecast endpoint.
+	assert.False(t, opts.Marine)
+}
+
+func TestOptionsBuilder_Marine(t *testing.T) {
+
+	hourly, err := NewMetrics("marine_hourly", WaveHeight, SwellWavePeriod)
+	assert.NoError(t, err)
+
+	daily, err := NewMetrics("marine_daily", WaveHeightMax)
+	assert.NoError(t, err)
+
+	current, err := NewMetrics("marine_current", SeaSurfaceTemperature)
+	assert.NoError(t, err)
+
+	opts := NewOptionsBuilder().
+		Latitude(38.0447).
+		Longitude(-122.1577).
+		Marine(true).
+		HourlyMetrics(hourly).
+		DailyMetrics(daily).
+		CurrentMetrics(current).
+		Build()
+
+	assert.Equal(t, 38.0447, opts.Latitude)
+	assert.Equal(t, -122.1577, opts.Longitude)
+	assert.True(t, opts.Marine)
+	assert.Equal(t, hourly, opts.HourlyMetrics)
+	assert.Equal(t, daily, opts.DailyMetrics)
+	assert.Equal(t, current, opts.CurrentMetrics)
+
+	// The flag is a plain setter, so it can be turned back off.
+	assert.False(t, NewOptionsBuilder().Marine(true).Marine(false).Build().Marine)
 }

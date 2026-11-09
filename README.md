@@ -15,6 +15,7 @@ go libraries for Open Meteo, and because it made for a fun weekend project.
 
 * Fetch **current**, **hourly**, and **daily** weather data.  
 * Access **historical weather data** for specific date ranges.  
+* Fetch **marine data** (waves, swell, ocean currents), with JSON `null` kept distinct from a real `0`.  
 * Fluent **Options Builder** for easily constructing complex queries.  
 * Support for multiple **units** (Celsius/Fahrenheit, km/h/mph, etc.).  
 * Select exactly which weather metrics you need.  
@@ -124,6 +125,58 @@ To get historical data, simply provide a Start and End date. The client will aut
     }
 ```    
 
+### **Fetching Marine Data**
+
+Set `Marine(true)` to route the request to the marine endpoint, which serves
+wave, swell and ocean-current data.
+
+The marine model only covers open water. A position outside its domain — a
+marina well up an estuary, say — does **not** return an error: it returns HTTP
+200 with a full-length series of JSON `null`. Marine values are therefore
+`*float64` rather than `float64`, so `nil` means *no value here* and `0` means a
+real reading of zero. Check coverage with `HasAny` before reading a series.
+
+```go
+	opts := openmeteogo.NewOptionsBuilder().
+		Latitude(38.0447).
+		Longitude(-122.1577).
+		Marine(true).
+		DailyMetrics(openmeteogo.Metrics{
+			openmeteogo.WaveHeightMax,
+			openmeteogo.WavePeriodMax,
+		}).
+		Build()
+
+	wd, err := c.Get(opts)
+	if err != nil {
+		log.Fatalf("Failed to get marine data: %v", err)
+	}
+
+	if !openmeteogo.HasAny(wd.Daily.WaveHeightMax) {
+		log.Fatal("no wave data: this position is outside the marine model's domain")
+	}
+
+	for i, date := range wd.Daily.Time {
+		h := wd.Daily.WaveHeightMax[i]
+		if h == nil {
+			fmt.Printf("%s: no wave height\n", date)
+			continue
+		}
+		fmt.Printf("%s: max wave height %.2f%s\n", date, *h, wd.DailyUnits.WaveHeightMax)
+	}
+```
+
+Three helpers keep callers from reinventing the nil handling:
+
+| Helper | Description |
+| :---- | :---- |
+| `Value(vals []*float64) (float64, bool)` | First non-nil entry, and whether one existed. |
+| `HasAny(vals []*float64) bool` | Whether any entry is non-nil. False across a marine series means the position is out of domain. |
+| `Floats(vals []*float64) []float64` | Flattens to `[]float64`, substituting zero for nil. Only safe once `HasAny` is true. |
+
+Validate marine metrics with `NewMetrics` using the `marine_hourly`,
+`marine_daily`, or `marine_current` metric type.
+
 ## **Options**
 
 The OptionsBuilder provides a simple way to configure your request.
@@ -143,6 +196,7 @@ The OptionsBuilder provides a simple way to configure your request.
 | CurrentMetrics() | Select which current metrics to fetch. | .CurrentMetrics(\&CurrentMetrics{...}) |
 | DailyMetrics() | Select which daily metrics to fetch. | .DailyMetrics(\&DailyMetrics{...}) |
 | HourlyMetrics() | Select which hourly metrics to fetch. | .HourlyMetrics(\&HourlyMetrics{...}) |
+| Marine() | Use the marine endpoint (waves, swell, currents). | .Marine(true) |
 
 ### **Available Metrics**
 
@@ -178,6 +232,30 @@ UvIndexMax, UvIndexClearSkyMax, RainSum, ShowersSum, SnowfallSum,
 PrecipitationSum, PrecipitationHours, PrecipitationProbabilityMax,
 WindSpeed10mMax, WindGusts10mMax, WindDirection10mDominant,
 ShortwaveRadiationSum, Et0FaoEvapotranspiration
+
+### **Marine Metrics**
+
+Only valid with `Marine(true)`. Every one of these decodes to `*float64` /
+`[]*float64`.
+
+**Hourly and current** (`marine_hourly`, `marine_current`):
+
+WaveHeight, WaveDirection, WavePeriod, WavePeakPeriod, WindWaveHeight,
+WindWaveDirection, WindWavePeriod, WindWavePeakPeriod, SwellWaveHeight,
+SwellWaveDirection, SwellWavePeriod, SwellWavePeakPeriod,
+SecondarySwellWaveHeight, SecondarySwellWaveDirection, SecondarySwellWavePeriod,
+TertiarySwellWaveHeight, TertiarySwellWaveDirection, TertiarySwellWavePeriod,
+SeaLevelHeight, SeaSurfaceTemperature, OceanCurrentVelocity,
+OceanCurrentDirection
+
+(`WavePeakPeriod` and the secondary/tertiary swell metrics are hourly only.)
+
+**Daily** (`marine_daily`):
+
+WaveHeightMax, WaveDirectionDominant, WavePeriodMax, WindWaveHeightMax,
+WindWaveDirectionDominant, WindWavePeriodMax, WindWavePeakPeriodMax,
+SwellWaveHeightMax, SwellWaveDirectionDominant, SwellWavePeriodMax,
+SwellWavePeakPeriodMax
 
 ## **Available Units**
 

@@ -50,6 +50,10 @@ type Options struct {
 	DailyMetrics Metrics
 	// CurrentMetrics specifies which current weather variables to retrieve.
 	CurrentMetrics Metrics
+	// Marine routes the request to the marine endpoint instead of the
+	// forecast one. Marine metrics are only valid on that endpoint, and the
+	// values it returns are nullable: see HasAny.
+	Marine bool
 }
 
 // OptionsBuilder provides a fluent interface for constructing an Options object.
@@ -137,6 +141,15 @@ func (b *OptionsBuilder) DailyMetrics(metrics Metrics) *OptionsBuilder {
 // CurrentMetrics sets the specific current weather metrics to be fetched.
 func (b *OptionsBuilder) CurrentMetrics(metrics Metrics) *OptionsBuilder {
 	b.options.CurrentMetrics = metrics
+	return b
+}
+
+// Marine routes the request to the marine endpoint, which serves wave, swell
+// and ocean-current data. The marine model only covers open water, so a
+// position outside its domain comes back as nulls rather than an error: check
+// a series with HasAny before reading it.
+func (b *OptionsBuilder) Marine(marine bool) *OptionsBuilder {
+	b.options.Marine = marine
 	return b
 }
 
@@ -278,6 +291,12 @@ func NewMetrics(metricType string, Metrics ...Metric) (Metrics, error) {
 		allowed = dailyMetrics
 	case "current":
 		allowed = currentMetrics
+	case "marine_hourly":
+		allowed = marineHourlyMetrics
+	case "marine_daily":
+		allowed = marineDailyMetrics
+	case "marine_current":
+		allowed = marineCurrentMetrics
 	}
 
 	for _, metric := range Metrics {

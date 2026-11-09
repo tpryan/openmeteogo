@@ -98,7 +98,13 @@ func (c *Client) url(o *Options) string {
 	// Determine if the request is for data older than the forecast API's history limit.
 	isHistorical := !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit
 
-	if isHistorical {
+	switch {
+	// The marine endpoint serves its own history, so it wins over the archive
+	// rewrite rather than combining with it.
+	case o.Marine:
+		host = marineHostPrefix + host
+		path = marinePath
+	case isHistorical:
 		host = "archive-" + host
 		path = "/v1/archive"
 	}
@@ -213,6 +219,10 @@ type CurrentUnits struct {
 	WindSpeed10m        string `json:"wind_speed_10m"`
 	WindDirection10m    string `json:"wind_direction_10m"`
 	WindGusts10m        string `json:"wind_gusts_10m"`
+
+	// CurrentMarineUnits carries the marine units, populated only by marine
+	// requests. Its fields are promoted, so they read as units.WaveHeight.
+	CurrentMarineUnits
 }
 
 // Current holds the current weather data values.
@@ -234,6 +244,12 @@ type Current struct {
 	WindSpeed10m        float64 `json:"wind_speed_10m"`
 	WindDirection10m    int     `json:"wind_direction_10m"`
 	WindGusts10m        float64 `json:"wind_gusts_10m"`
+
+	// CurrentMarine carries the marine values, populated only by marine
+	// requests. Its fields are promoted, so they read as current.WaveHeight,
+	// and each is a *float64 so a JSON null stays distinguishable from a
+	// genuine zero.
+	CurrentMarine
 }
 
 // HourlyUnits describes the units for the hourly forecast data.
@@ -280,6 +296,10 @@ type HourlyUnits struct {
 	SoilMoisture1To3cm       string `json:"soil_moisture_1_to_3cm"`
 	SoilMoisture9To27cm      string `json:"soil_moisture_9_to_27cm"`
 	SoilMoisture3To9cm       string `json:"soil_moisture_3_to_9cm"`
+
+	// HourlyMarineUnits carries the marine units, populated only by marine
+	// requests. Its fields are promoted, so they read as units.WaveHeight.
+	HourlyMarineUnits
 }
 
 // Hourly holds slices for each hourly forecast metric.
@@ -326,6 +346,12 @@ type Hourly struct {
 	SoilMoisture1To3cm       []float64 `json:"soil_moisture_1_to_3cm"`
 	SoilMoisture9To27cm      []float64 `json:"soil_moisture_9_to_27cm"`
 	SoilMoisture3To9cm       []float64 `json:"soil_moisture_3_to_9cm"`
+
+	// HourlyMarine carries the marine series, populated only by marine
+	// requests. Its fields are promoted, so they read as hourly.WaveHeight,
+	// and each is a []*float64 so a JSON null stays distinguishable from a
+	// genuine zero.
+	HourlyMarine
 }
 
 // DailyUnits describes the units for the daily forecast data.
@@ -353,6 +379,10 @@ type DailyUnits struct {
 	WindDirection10mDominant    string `json:"wind_direction_10m_dominant"`
 	ShortwaveRadiationSum       string `json:"shortwave_radiation_sum"`
 	Et0FaoEvapotranspiration    string `json:"et0_fao_evapotranspiration"`
+
+	// DailyMarineUnits carries the marine units, populated only by marine
+	// requests. Its fields are promoted, so they read as units.WaveHeightMax.
+	DailyMarineUnits
 }
 
 // Daily holds slices for each daily forecast metric.
@@ -380,4 +410,10 @@ type Daily struct {
 	WindDirection10mDominant    []int     `json:"wind_direction_10m_dominant"`
 	ShortwaveRadiationSum       []float64 `json:"shortwave_radiation_sum"`
 	Et0FaoEvapotranspiration    []float64 `json:"et0_fao_evapotranspiration"`
+
+	// DailyMarine carries the marine series, populated only by marine
+	// requests. Its fields are promoted, so they read as daily.WaveHeightMax,
+	// and each is a []*float64 so a JSON null stays distinguishable from a
+	// genuine zero.
+	DailyMarine
 }

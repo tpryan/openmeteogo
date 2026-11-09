@@ -207,6 +207,41 @@ func TestURL(t *testing.T) {
 			options: *NewOptionsBuilder().Timezone(*time.UTC).PastDays(1).ForcastDays(2).Build(),
 			want:    "https://api.open-meteo.com/v1/forecast?forecast_days=2&latitude=0&longitude=0&past_days=1&timezone=UTC",
 		},
+		"marine": {
+			client:  NewClient(),
+			options: *NewOptionsBuilder().Marine(true).Build(),
+			want:    "https://marine-api.open-meteo.com/v1/marine?latitude=0&longitude=0",
+		},
+		"marine off is unchanged": {
+			client:  NewClient(),
+			options: *NewOptionsBuilder().Marine(false).Build(),
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0",
+		},
+		"marine with api key": {
+			client:  NewClientWithKey("testkeynotvalue"),
+			options: *NewOptionsBuilder().Marine(true).Build(),
+			want:    "https://customer-marine-api.open-meteo.com/v1/marine?apikey=testkeynotvalue&latitude=0&longitude=0",
+		},
+		"marine beats the archive rewrite": {
+			client: NewClient(),
+			options: Options{
+				Marine: true,
+				Start:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
+				End:    time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
+			},
+			want: "https://marine-api.open-meteo.com/v1/marine?end_date=2000-01-02&latitude=0&longitude=0&start_date=2000-01-01",
+		},
+		"marine with metrics": {
+			client: NewClient(),
+			options: *NewOptionsBuilder().
+				Marine(true).
+				Latitude(38.0447).
+				Longitude(-122.1577).
+				HourlyMetrics(Metrics{WaveHeight, WavePeriod}).
+				DailyMetrics(Metrics{WaveHeightMax}).
+				Build(),
+			want: "https://marine-api.open-meteo.com/v1/marine?daily=wave_height_max&hourly=wave_height%2Cwave_period&latitude=38.0447&longitude=-122.1577",
+		},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -407,6 +442,197 @@ func TestParsing(t *testing.T) {
 					WindDirection10mDominant:    []int{347, 313, 284, 245, 273, 215, 267},
 					ShortwaveRadiationSum:       []float64{15.73, 8.24, 19.83, 18.74, 15.69, 14.76, 14.29},
 					Et0FaoEvapotranspiration:    []float64{3.21, 2.28, 3.85, 3.39, 2.93, 3.2, 2.6},
+				},
+			},
+		},
+		"marine": {
+			input: "test_data/marine.json",
+			want: WeatherData{
+				Latitude:             54.5,
+				Longitude:            8.0,
+				GenerationtimeMs:     0.0820159912109375,
+				UtcOffsetSeconds:     0,
+				Timezone:             "GMT",
+				TimezoneAbbreviation: "GMT",
+				Elevation:            0.0,
+				CurrentUnits: CurrentUnits{
+					Time:     "iso8601",
+					Interval: "seconds",
+					CurrentMarineUnits: CurrentMarineUnits{
+						WaveHeight:            "m",
+						WaveDirection:         "°",
+						WavePeriod:            "s",
+						WindWaveHeight:        "m",
+						WindWaveDirection:     "°",
+						WindWavePeriod:        "s",
+						WindWavePeakPeriod:    "s",
+						SwellWaveHeight:       "m",
+						SwellWaveDirection:    "°",
+						SwellWavePeriod:       "s",
+						SwellWavePeakPeriod:   "s",
+						SeaLevelHeight:        "m",
+						SeaSurfaceTemperature: "°C",
+						OceanCurrentVelocity:  "km/h",
+						OceanCurrentDirection: "°",
+					},
+				},
+				Current: Current{
+					Time:     "2026-01-01T00:00",
+					Interval: 3600,
+					CurrentMarine: CurrentMarine{
+						WaveHeight:          f(1.5),
+						WaveDirection:       f(230),
+						WavePeriod:          f(7),
+						WindWaveHeight:      f(0.4),
+						WindWaveDirection:   f(210),
+						WindWavePeriod:      f(3.1),
+						WindWavePeakPeriod:  f(4),
+						SwellWaveHeight:     f(1.4),
+						SwellWaveDirection:  f(235),
+						SwellWavePeriod:     f(8),
+						SwellWavePeakPeriod: f(10),
+						SeaLevelHeight:      f(0.21),
+						// Explicitly null in the fixture: absent, not 0 °C.
+						SeaSurfaceTemperature: nil,
+						// Explicitly 0.0 in the fixture: slack water, a real reading.
+						OceanCurrentVelocity:  f(0),
+						OceanCurrentDirection: f(90),
+					},
+				},
+				HourlyUnits: HourlyUnits{
+					Time: "iso8601",
+					HourlyMarineUnits: HourlyMarineUnits{
+						WaveHeight:                  "m",
+						WaveDirection:               "°",
+						WavePeriod:                  "s",
+						WavePeakPeriod:              "s",
+						WindWaveHeight:              "m",
+						WindWaveDirection:           "°",
+						WindWavePeriod:              "s",
+						WindWavePeakPeriod:          "s",
+						SwellWaveHeight:             "m",
+						SwellWaveDirection:          "°",
+						SwellWavePeriod:             "s",
+						SwellWavePeakPeriod:         "s",
+						SecondarySwellWaveHeight:    "m",
+						SecondarySwellWaveDirection: "°",
+						SecondarySwellWavePeriod:    "s",
+						TertiarySwellWaveHeight:     "m",
+						TertiarySwellWaveDirection:  "°",
+						TertiarySwellWavePeriod:     "s",
+						SeaLevelHeight:              "m",
+						SeaSurfaceTemperature:       "°C",
+						OceanCurrentVelocity:        "km/h",
+						OceanCurrentDirection:       "°",
+					},
+				},
+				Hourly: Hourly{
+					Time: []string{"2026-01-01T00:00", "2026-01-01T01:00"},
+					HourlyMarine: HourlyMarine{
+						WaveHeight:          []*float64{f(1.5), f(1.6)},
+						WaveDirection:       []*float64{f(230), f(232)},
+						WavePeriod:          []*float64{f(7), f(7.2)},
+						WavePeakPeriod:      []*float64{f(9), f(9.1)},
+						WindWaveHeight:      []*float64{f(0.4), f(0.5)},
+						WindWaveDirection:   []*float64{f(210), f(211)},
+						WindWavePeriod:      []*float64{f(3.1), f(3.2)},
+						WindWavePeakPeriod:  []*float64{f(4), f(4.1)},
+						SwellWaveHeight:     []*float64{f(1.4), f(1.45)},
+						SwellWaveDirection:  []*float64{f(235), f(236)},
+						SwellWavePeriod:     []*float64{f(8), f(8.1)},
+						SwellWavePeakPeriod: []*float64{f(10), f(10.1)},
+						// A gap inside a covered series.
+						SecondarySwellWaveHeight:    []*float64{f(0.3), nil},
+						SecondarySwellWaveDirection: []*float64{f(180), nil},
+						SecondarySwellWavePeriod:    []*float64{f(5), nil},
+						// No tertiary swell at all.
+						TertiarySwellWaveHeight:    []*float64{nil, nil},
+						TertiarySwellWaveDirection: []*float64{nil, nil},
+						TertiarySwellWavePeriod:    []*float64{nil, nil},
+						SeaLevelHeight:             []*float64{f(0.21), f(-0.14)},
+						SeaSurfaceTemperature:      []*float64{f(8.2), f(8.3)},
+						OceanCurrentVelocity:       []*float64{f(0), f(0.3)},
+						OceanCurrentDirection:      []*float64{f(90), f(94)},
+					},
+				},
+				DailyUnits: DailyUnits{
+					Time: "iso8601",
+					DailyMarineUnits: DailyMarineUnits{
+						WaveHeightMax:              "m",
+						WaveDirectionDominant:      "°",
+						WavePeriodMax:              "s",
+						WindWaveHeightMax:          "m",
+						WindWaveDirectionDominant:  "°",
+						WindWavePeriodMax:          "s",
+						WindWavePeakPeriodMax:      "s",
+						SwellWaveHeightMax:         "m",
+						SwellWaveDirectionDominant: "°",
+						SwellWavePeriodMax:         "s",
+						SwellWavePeakPeriodMax:     "s",
+					},
+				},
+				Daily: Daily{
+					Time: []string{"2026-01-01"},
+					DailyMarine: DailyMarine{
+						WaveHeightMax:              []*float64{f(1.9)},
+						WaveDirectionDominant:      []*float64{f(231)},
+						WavePeriodMax:              []*float64{f(7.5)},
+						WindWaveHeightMax:          []*float64{f(0.6)},
+						WindWaveDirectionDominant:  []*float64{f(210)},
+						WindWavePeriodMax:          []*float64{f(3.4)},
+						WindWavePeakPeriodMax:      []*float64{f(4.2)},
+						SwellWaveHeightMax:         []*float64{f(1.7)},
+						SwellWaveDirectionDominant: []*float64{f(235)},
+						SwellWavePeriodMax:         []*float64{f(8.4)},
+						SwellWavePeakPeriodMax:     []*float64{f(10.5)},
+					},
+				},
+			},
+		},
+		// A position outside the wave model's domain. Every marine value is
+		// null, and the slices keep their full length, so only the nils
+		// distinguish this from a flat calm.
+		"marine out of domain": {
+			input: "test_data/marine_out_of_domain.json",
+			want: WeatherData{
+				Latitude:             38.0447,
+				Longitude:            -122.1577,
+				GenerationtimeMs:     0.0579357147216797,
+				UtcOffsetSeconds:     0,
+				Timezone:             "GMT",
+				TimezoneAbbreviation: "GMT",
+				Elevation:            0.0,
+				HourlyUnits: HourlyUnits{
+					Time: "iso8601",
+					HourlyMarineUnits: HourlyMarineUnits{
+						WaveHeight:    "m",
+						WaveDirection: "°",
+						WavePeriod:    "s",
+					},
+				},
+				Hourly: Hourly{
+					Time: []string{"2026-01-01T00:00", "2026-01-01T01:00", "2026-01-01T02:00"},
+					HourlyMarine: HourlyMarine{
+						WaveHeight:    []*float64{nil, nil, nil},
+						WaveDirection: []*float64{nil, nil, nil},
+						WavePeriod:    []*float64{nil, nil, nil},
+					},
+				},
+				DailyUnits: DailyUnits{
+					Time: "iso8601",
+					DailyMarineUnits: DailyMarineUnits{
+						WaveHeightMax:         "m",
+						WaveDirectionDominant: "°",
+						WavePeriodMax:         "s",
+					},
+				},
+				Daily: Daily{
+					Time: []string{"2026-01-01", "2026-01-02"},
+					DailyMarine: DailyMarine{
+						WaveHeightMax:         []*float64{nil, nil},
+						WaveDirectionDominant: []*float64{nil, nil},
+						WavePeriodMax:         []*float64{nil, nil},
+					},
 				},
 			},
 		},
