@@ -55,7 +55,7 @@ func TestPrecipitationUnitString(t *testing.T) {
 	}{
 		"in": {
 			input: IN,
-			want:  "in",
+			want:  "inch",
 		},
 		"mm": {
 			input: MM,

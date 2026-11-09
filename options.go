@@ -56,6 +56,8 @@ type Options struct {
 	MonthlyMetrics Metrics
 	// CurrentMetrics specifies which current weather variables to retrieve.
 	CurrentMetrics Metrics
+	// Seasonal forces the request to use the seasonal API endpoint.
+	Seasonal bool
 	// Marine routes the request to the marine endpoint instead of the
 	// forecast one. Marine metrics are only valid on that endpoint, and the
 	// values it returns are nullable: see HasAny.
@@ -165,6 +167,12 @@ func (b *OptionsBuilder) MonthlyMetrics(metrics Metrics) *OptionsBuilder {
 // CurrentMetrics sets the specific current weather metrics to be fetched.
 func (b *OptionsBuilder) CurrentMetrics(metrics Metrics) *OptionsBuilder {
 	b.options.CurrentMetrics = metrics
+	return b
+}
+
+// Seasonal forces the request to use the seasonal API endpoint.
+func (b *OptionsBuilder) Seasonal(seasonal bool) *OptionsBuilder {
+	b.options.Seasonal = seasonal
 	return b
 }
 
@@ -291,7 +299,7 @@ const (
 	TertiarySwellWaveHeight     Metric = "tertiary_swell_wave_height"
 	TertiarySwellWaveDirection  Metric = "tertiary_swell_wave_direction"
 	TertiarySwellWavePeriod     Metric = "tertiary_swell_wave_period"
-	SeaLevelHeight              Metric = "sea_level_height"
+	SeaLevelHeight              Metric = "sea_level_height_msl"
 	SeaSurfaceTemperature       Metric = "sea_surface_temperature"
 	OceanCurrentVelocity        Metric = "ocean_current_velocity"
 	OceanCurrentDirection       Metric = "ocean_current_direction"
@@ -365,6 +373,12 @@ func NewMetrics(metricType string, Metrics ...Metric) (Metrics, error) {
 		allowed = dailyMetrics
 	case "current":
 		allowed = currentMetrics
+	case "weekly":
+		// TODO: Define strict list for weekly if needed
+		return Metrics, nil
+	case "monthly":
+		// TODO: Define strict list for monthly if needed
+		return Metrics, nil
 	case "marine_hourly":
 		allowed = marineHourlyMetrics
 	case "marine_daily":

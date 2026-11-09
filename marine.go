@@ -28,13 +28,9 @@ package openmeteogo
 //
 // Use HasAny to tell a covered position from an out-of-domain one.
 
-const (
-	// marineHostPrefix is prepended to the API host for marine requests,
-	// yielding marine-api.open-meteo.com.
-	marineHostPrefix = "marine-"
-	// marinePath is the path of the marine endpoint.
-	marinePath = "/v1/marine"
-)
+// marinePath is the path of the marine endpoint. The host it is served from
+// is Client.marineHost.
+const marinePath = "/v1/marine"
 
 // Value returns the first non-nil entry and whether one existed.
 func Value(vals []*float64) (float64, bool) {
@@ -207,46 +203,8 @@ type CurrentMarineUnits struct {
 	OceanCurrentDirection string `json:"ocean_current_direction"`
 }
 
-// Marine metrics for hourly and current requests.
-const (
-	WaveHeight                  Metric = "wave_height"
-	WaveDirection               Metric = "wave_direction"
-	WavePeriod                  Metric = "wave_period"
-	WavePeakPeriod              Metric = "wave_peak_period"
-	WindWaveHeight              Metric = "wind_wave_height"
-	WindWaveDirection           Metric = "wind_wave_direction"
-	WindWavePeriod              Metric = "wind_wave_period"
-	WindWavePeakPeriod          Metric = "wind_wave_peak_period"
-	SwellWaveHeight             Metric = "swell_wave_height"
-	SwellWaveDirection          Metric = "swell_wave_direction"
-	SwellWavePeriod             Metric = "swell_wave_period"
-	SwellWavePeakPeriod         Metric = "swell_wave_peak_period"
-	SecondarySwellWaveHeight    Metric = "secondary_swell_wave_height"
-	SecondarySwellWaveDirection Metric = "secondary_swell_wave_direction"
-	SecondarySwellWavePeriod    Metric = "secondary_swell_wave_period"
-	TertiarySwellWaveHeight     Metric = "tertiary_swell_wave_height"
-	TertiarySwellWaveDirection  Metric = "tertiary_swell_wave_direction"
-	TertiarySwellWavePeriod     Metric = "tertiary_swell_wave_period"
-	SeaLevelHeight              Metric = "sea_level_height_msl"
-	SeaSurfaceTemperature       Metric = "sea_surface_temperature"
-	OceanCurrentVelocity        Metric = "ocean_current_velocity"
-	OceanCurrentDirection       Metric = "ocean_current_direction"
-)
-
-// Marine metrics for daily requests.
-const (
-	WaveHeightMax              Metric = "wave_height_max"
-	WaveDirectionDominant      Metric = "wave_direction_dominant"
-	WavePeriodMax              Metric = "wave_period_max"
-	WindWaveHeightMax          Metric = "wind_wave_height_max"
-	WindWaveDirectionDominant  Metric = "wind_wave_direction_dominant"
-	WindWavePeriodMax          Metric = "wind_wave_period_max"
-	WindWavePeakPeriodMax      Metric = "wind_wave_peak_period_max"
-	SwellWaveHeightMax         Metric = "swell_wave_height_max"
-	SwellWaveDirectionDominant Metric = "swell_wave_direction_dominant"
-	SwellWavePeriodMax         Metric = "swell_wave_period_max"
-	SwellWavePeakPeriodMax     Metric = "swell_wave_peak_period_max"
-)
+// The marine Metric constants live in options.go, alongside every other
+// metric the library exposes.
 
 // marineHourlyMetrics are the metrics the marine endpoint accepts for hourly.
 var marineHourlyMetrics = []Metric{

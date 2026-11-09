@@ -200,7 +200,7 @@ func TestURL(t *testing.T) {
 		"iota options": {
 			client:  NewClient(),
 			options: *NewOptionsBuilder().TemperatureUnit(Fahrenheit).WindspeedUnit(KN).PrecipitationUnit(IN).Build(),
-			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&precipitation_unit=in&temperature_unit=fahrenheit&windspeed_unit=kn",
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&precipitation_unit=inch&temperature_unit=fahrenheit&windspeed_unit=kn",
 		},
 		"other options": {
 			client:  NewClient(),

@@ -94,7 +94,7 @@ func TestClient_Get_Seasonal(t *testing.T) {
 
 	client := NewClient()
 	client.HTTPClient = server.Client()
-	
+
 	// Override hosts to point to mock server
 	urlParts := strings.Split(server.URL, "://")
 	client.scheme = urlParts[0]
@@ -121,7 +121,7 @@ func TestClient_Get_Seasonal(t *testing.T) {
 func TestClient_Get_Seasonal_Integration(t *testing.T) {
 	// This test uses the mock server but simulates a more complete response
 	// to ensure all fields are mapped correctly if JSON is full.
-	
+
 	responseJSON := `{
 		"latitude": 10.0,
 		"longitude": 20.0,

@@ -24,10 +24,12 @@ import (
 )
 
 const (
-	defaultHost          = "api.open-meteo.com"
-	defaultScheme        = "https"
-	defaultSeasonalHost  = "seasonal-api.open-meteo.com"
-	defaultMarineHost    = "marine-api.open-meteo.com"
+	defaultHost         = "api.open-meteo.com"
+	defaultScheme       = "https"
+	defaultSeasonalHost = "seasonal-api.open-meteo.com"
+	defaultMarineHost   = "marine-api.open-meteo.com"
+	// seasonalPath is the path of the seasonal endpoint.
+	seasonalPath         = "/v1/seasonal"
 	forecastHistoryLimit = 7 * 24 * time.Hour
 
 	// defaultUserAgent is the default User-Agent string sent with HTTP requests.
@@ -113,12 +115,15 @@ func (c *Client) url(o *Options) string {
 	// Determine if the request is for data older than the forecast API's history limit.
 	isHistorical := !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit
 
+	// The marine and seasonal endpoints each serve their own history, so they
+	// win over the archive rewrite rather than combining with it.
 	switch {
-	// The marine endpoint serves its own history, so it wins over the archive
-	// rewrite rather than combining with it.
-	case o.Marine:
-		host = marineHostPrefix + host
+	case isMarine:
+		host = c.marineHost
 		path = marinePath
+	case isSeasonal:
+		host = c.seasonalHost
+		path = seasonalPath
 	case isHistorical:
 		host = "archive-" + host
 		path = "/v1/archive"
@@ -457,4 +462,52 @@ type Daily struct {
 	// and each is a []*float64 so a JSON null stays distinguishable from a
 	// genuine zero.
 	DailyMarine
+}
+
+// WeeklyUnits describes the units for the weekly seasonal forecast data.
+type WeeklyUnits struct {
+	Time                    string `json:"time"`
+	Temperature2mMean       string `json:"temperature_2m_mean"`
+	Temperature2mAnomaly    string `json:"temperature_2m_anomaly"`
+	PrecipitationMean       string `json:"precipitation_mean"`
+	PrecipitationAnomaly    string `json:"precipitation_anomaly"`
+	PressureMslMean         string `json:"pressure_msl_mean"`
+	PressureMslAnomaly      string `json:"pressure_msl_anomaly"`
+	SoilMoisture0To10cmMean string `json:"soil_moisture_0_to_10cm_mean"`
+}
+
+// Weekly holds slices for each weekly seasonal forecast metric.
+type Weekly struct {
+	Time                    []string  `json:"time"`
+	Temperature2mMean       []float64 `json:"temperature_2m_mean"`
+	Temperature2mAnomaly    []float64 `json:"temperature_2m_anomaly"`
+	PrecipitationMean       []float64 `json:"precipitation_mean"`
+	PrecipitationAnomaly    []float64 `json:"precipitation_anomaly"`
+	PressureMslMean         []float64 `json:"pressure_msl_mean"`
+	PressureMslAnomaly      []float64 `json:"pressure_msl_anomaly"`
+	SoilMoisture0To10cmMean []float64 `json:"soil_moisture_0_to_10cm_mean"`
+}
+
+// MonthlyUnits describes the units for the monthly seasonal forecast data.
+type MonthlyUnits struct {
+	Time                    string `json:"time"`
+	Temperature2mMean       string `json:"temperature_2m_mean"`
+	Temperature2mAnomaly    string `json:"temperature_2m_anomaly"`
+	PrecipitationMean       string `json:"precipitation_mean"`
+	PrecipitationAnomaly    string `json:"precipitation_anomaly"`
+	PressureMslMean         string `json:"pressure_msl_mean"`
+	PressureMslAnomaly      string `json:"pressure_msl_anomaly"`
+	SoilMoisture0To10cmMean string `json:"soil_moisture_0_to_10cm_mean"`
+}
+
+// Monthly holds slices for each monthly seasonal forecast metric.
+type Monthly struct {
+	Time                    []string  `json:"time"`
+	Temperature2mMean       []float64 `json:"temperature_2m_mean"`
+	Temperature2mAnomaly    []float64 `json:"temperature_2m_anomaly"`
+	PrecipitationMean       []float64 `json:"precipitation_mean"`
+	PrecipitationAnomaly    []float64 `json:"precipitation_anomaly"`
+	PressureMslMean         []float64 `json:"pressure_msl_mean"`
+	PressureMslAnomaly      []float64 `json:"pressure_msl_anomaly"`
+	SoilMoisture0To10cmMean []float64 `json:"soil_moisture_0_to_10cm_mean"`
 }
