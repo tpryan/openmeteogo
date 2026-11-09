@@ -19,7 +19,7 @@ import (
 	"log"
 	"time"
 
-	openmeteogo "github.com/tpryan/openmeteogo"
+	openmeteogo "github.com/tpryan/openmeteogo/v2"
 )
 
 func main() {
