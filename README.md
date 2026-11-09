@@ -193,6 +193,9 @@ The OptionsBuilder provides a simple way to configure your request.
 | ForcastDays() | Request N number of forecast days. | .ForcastDays(3) |
 | Start() | Set a start date for historical queries. | .Start(time.Now()) |
 | End() | Set an end date for historical queries. | .End(time.Now()) |
+| Seasonal() | Enable Seasonal API. | .Seasonal(true) |
+| Marine() | Enable Marine API. | .Marine(true) |
+| Models() | Set specific weather models (Seasonal/Marine). | .Models([]string{"ecmwf_seas5"}) |
 | CurrentMetrics() | Select which current metrics to fetch. | .CurrentMetrics(\&CurrentMetrics{...}) |
 | DailyMetrics() | Select which daily metrics to fetch. | .DailyMetrics(\&DailyMetrics{...}) |
 | HourlyMetrics() | Select which hourly metrics to fetch. | .HourlyMetrics(\&HourlyMetrics{...}) |
@@ -222,7 +225,14 @@ WindSpeed120m, WindSpeed180m, WindDirection10m, WindDirection80m,
 WindDirection120m, WindDirection180m, WindGusts10m, Temperature80m,
 Temperature120m, Temperature180m, SoilTemperature0cm, SoilTemperature6cm,
 SoilTemperature18cm, SoilTemperature54cm, SoilMoisture0To1cm,
-SoilMoisture1To3cm, SoilMoisture9To27cm, SoilMoisture3To9cm
+SoilMoisture1To3cm, SoilMoisture9To27cm, SoilMoisture3To9cm,
+WaveHeight, WaveDirection, WavePeriod, WavePeakPeriod, WindWaveHeight,
+WindWaveDirection, WindWavePeriod, WindWavePeakPeriod, SwellWaveHeight,
+SwellWaveDirection, SwellWavePeriod, SwellWavePeakPeriod,
+SecondarySwellWaveHeight, SecondarySwellWaveDirection, SecondarySwellWavePeriod,
+TertiarySwellWaveHeight, TertiarySwellWaveDirection, TertiarySwellWavePeriod,
+SeaLevelHeight, SeaSurfaceTemperature, OceanCurrentVelocity,
+OceanCurrentDirection
 
 ### **Daily Metrics**
 
@@ -231,7 +241,18 @@ ApparentTemperatureMin, Sunrise, Sunset, SunshineDuration, DaylightDuration,
 UvIndexMax, UvIndexClearSkyMax, RainSum, ShowersSum, SnowfallSum,
 PrecipitationSum, PrecipitationHours, PrecipitationProbabilityMax,
 WindSpeed10mMax, WindGusts10mMax, WindDirection10mDominant,
-ShortwaveRadiationSum, Et0FaoEvapotranspiration
+ShortwaveRadiationSum, Et0FaoEvapotranspiration, WaveHeightMax,
+WaveDirectionDominant, WavePeriodMax, WindWaveHeightMax,
+WindWaveDirectionDominant, WindWavePeriodMax, WindWavePeakPeriodMax,
+SwellWaveHeightMax, SwellWaveDirectionDominant, SwellWavePeriodMax,
+SwellWavePeakPeriodMax
+
+### **Weekly & Monthly Metrics (Seasonal)**
+
+Temperature2mMean, Temperature2mAnomaly, Temperature2mMaxMean,
+Temperature2mMinMean, DewPoint2mMean, PrecipitationMean, PrecipitationAnomaly,
+PressureMslMean, PressureMslAnomaly, SoilMoisture0To10cmMean,
+SoilMoisture0To10cmAnomaly
 
 ### **Marine Metrics**
 

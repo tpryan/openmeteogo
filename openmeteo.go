@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
 const (
 	defaultHost          = "api.open-meteo.com"
 	defaultScheme        = "https"
+	defaultSeasonalHost  = "seasonal-api.open-meteo.com"
+	defaultMarineHost    = "marine-api.open-meteo.com"
 	forecastHistoryLimit = 7 * 24 * time.Hour
 
 	// defaultUserAgent is the default User-Agent string sent with HTTP requests.
@@ -36,10 +39,12 @@ type Client struct {
 	// UserAgent is the string sent in the User-Agent header of the request.
 	UserAgent string
 	// HTTPClient allows for a custom http.Client to be used for requests.
-	HTTPClient *http.Client
-	apiKey     string
-	scheme     string
-	host       string
+	HTTPClient   *http.Client
+	apiKey       string
+	scheme       string
+	host         string
+	seasonalHost string
+	marineHost   string
 }
 
 // Get fetches weather data based on the provided Options.
@@ -73,27 +78,37 @@ func (c *Client) Get(o *Options) (*WeatherData, error) {
 // NewClient creates a new Client with default settings.
 func NewClient() *Client {
 	return &Client{
-		HTTPClient: http.DefaultClient,
-		UserAgent:  defaultUserAgent,
-		scheme:     defaultScheme,
-		host:       defaultHost,
+		HTTPClient:   http.DefaultClient,
+		UserAgent:    defaultUserAgent,
+		scheme:       defaultScheme,
+		host:         defaultHost,
+		seasonalHost: defaultSeasonalHost,
+		marineHost:   defaultMarineHost,
 	}
 }
 
 // NewClientWithKey creates a new Client configured with a commercial API key.
 func NewClientWithKey(key string) *Client {
 	return &Client{
-		apiKey:     key,
-		HTTPClient: http.DefaultClient,
-		UserAgent:  defaultUserAgent,
-		scheme:     defaultScheme,
-		host:       defaultHost,
+		apiKey:       key,
+		HTTPClient:   http.DefaultClient,
+		UserAgent:    defaultUserAgent,
+		scheme:       defaultScheme,
+		host:         defaultHost,
+		seasonalHost: defaultSeasonalHost,
+		marineHost:   defaultMarineHost,
 	}
 }
 
 func (c *Client) url(o *Options) string {
 	host := c.host
 	path := "/v1/forecast"
+
+	// Determine if the request is for seasonal data.
+	isSeasonal := o.Seasonal || len(o.Models) > 0 || len(o.WeeklyMetrics) > 0 || len(o.MonthlyMetrics) > 0
+
+	// Determine if the request is for marine data.
+	isMarine := o.Marine
 
 	// Determine if the request is for data older than the forecast API's history limit.
 	isHistorical := !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit
@@ -121,39 +136,23 @@ func (c *Client) url(o *Options) string {
 
 	q := u.Query()
 
-	if c.apiKey != "" {
-		q.Set("apikey", c.apiKey)
-	}
+	// Use common options encoding
+	c.encodeCommonOptions(q, o)
 
-	q.Set("latitude", fmt.Sprintf("%v", o.Latitude))
-	q.Set("longitude", fmt.Sprintf("%v", o.Longitude))
-
-	if o.TemperatureUnit != "" {
-		q.Set("temperature_unit", string(o.TemperatureUnit))
-	}
-
-	if o.WindspeedUnit != "" {
-		q.Set("windspeed_unit", string(o.WindspeedUnit))
-	}
-
-	if o.PrecipitationUnit != "" {
-		q.Set("precipitation_unit", string(o.PrecipitationUnit))
-	}
-
-	if o.Timezone.String() != "" {
-		q.Set("timezone", o.Timezone.String())
-	}
-
-	if o.PastDays > 0 {
-		q.Set("past_days", fmt.Sprintf("%v", o.PastDays))
-	}
-
-	if !o.Start.IsZero() {
-		q.Set("start_date", o.Start.Format("2006-01-02"))
-	}
-
-	if !o.End.IsZero() {
-		q.Set("end_date", o.End.Format("2006-01-02"))
+	if isSeasonal {
+		if len(o.Models) > 0 {
+			q.Set("models", strings.Join(o.Models, ","))
+		}
+		if o.WeeklyMetrics != nil {
+			if val := o.WeeklyMetrics.encode(); val != "" {
+				q.Set("weekly", val)
+			}
+		}
+		if o.MonthlyMetrics != nil {
+			if val := o.MonthlyMetrics.encode(); val != "" {
+				q.Set("monthly", val)
+			}
+		}
 	}
 
 	if o.HourlyMetrics != nil {
@@ -183,6 +182,44 @@ func (c *Client) url(o *Options) string {
 	return u.String()
 }
 
+// encodeCommonOptions encodes options shared between Forecast, Archive, and Seasonal APIs.
+func (c *Client) encodeCommonOptions(q url.Values, o *Options) {
+	if c.apiKey != "" {
+		q.Set("apikey", c.apiKey)
+	}
+
+	q.Set("latitude", fmt.Sprintf("%v", o.Latitude))
+	q.Set("longitude", fmt.Sprintf("%v", o.Longitude))
+
+	if o.TemperatureUnit != "" {
+		q.Set("temperature_unit", string(o.TemperatureUnit))
+	}
+
+	if o.WindspeedUnit != "" {
+		q.Set("windspeed_unit", string(o.WindspeedUnit))
+	}
+
+	if o.PrecipitationUnit != "" {
+		q.Set("precipitation_unit", string(o.PrecipitationUnit))
+	}
+
+	if o.Timezone.String() != "" {
+		q.Set("timezone", o.Timezone.String())
+	}
+
+	if !o.Start.IsZero() {
+		q.Set("start_date", o.Start.Format("2006-01-02"))
+	}
+
+	if !o.End.IsZero() {
+		q.Set("end_date", o.End.Format("2006-01-02"))
+	}
+
+	if o.PastDays > 0 {
+		q.Set("past_days", fmt.Sprintf("%v", o.PastDays))
+	}
+}
+
 // WeatherData is the main struct that holds all the data returned from the API.
 type WeatherData struct {
 	Latitude             float64      `json:"latitude"`
@@ -198,6 +235,10 @@ type WeatherData struct {
 	Hourly               Hourly       `json:"hourly"`
 	DailyUnits           DailyUnits   `json:"daily_units"`
 	Daily                Daily        `json:"daily"`
+	WeeklyUnits          WeeklyUnits  `json:"weekly_units"`
+	Weekly               Weekly       `json:"weekly"`
+	MonthlyUnits         MonthlyUnits `json:"monthly_units"`
+	Monthly              Monthly      `json:"monthly"`
 }
 
 // CurrentUnits describes the units for the current weather data.

@@ -44,10 +44,16 @@ type Options struct {
 	Start time.Time
 	// End date for the historical data query.
 	End time.Time
+	// Models specifies the weather models to use (e.g. "ecmwf_seas5").
+	Models []string
 	// HourlyMetrics specifies which hourly weather variables to retrieve.
 	HourlyMetrics Metrics
 	// DailyMetrics specifies which daily weather variables to retrieve.
 	DailyMetrics Metrics
+	// WeeklyMetrics specifies which weekly weather variables to retrieve (Seasonal API).
+	WeeklyMetrics Metrics
+	// MonthlyMetrics specifies which monthly weather variables to retrieve (Seasonal API).
+	MonthlyMetrics Metrics
 	// CurrentMetrics specifies which current weather variables to retrieve.
 	CurrentMetrics Metrics
 	// Marine routes the request to the marine endpoint instead of the
@@ -126,6 +132,12 @@ func (b *OptionsBuilder) End(end time.Time) *OptionsBuilder {
 	return b
 }
 
+// Models sets the specific weather models to be used.
+func (b *OptionsBuilder) Models(models []string) *OptionsBuilder {
+	b.options.Models = models
+	return b
+}
+
 // HourlyMetrics sets the specific hourly metrics to be fetched.
 func (b *OptionsBuilder) HourlyMetrics(metrics Metrics) *OptionsBuilder {
 	b.options.HourlyMetrics = metrics
@@ -135,6 +147,18 @@ func (b *OptionsBuilder) HourlyMetrics(metrics Metrics) *OptionsBuilder {
 // DailyMetrics sets the specific daily metrics to be fetched.
 func (b *OptionsBuilder) DailyMetrics(metrics Metrics) *OptionsBuilder {
 	b.options.DailyMetrics = metrics
+	return b
+}
+
+// WeeklyMetrics sets the specific weekly metrics to be fetched (Seasonal API).
+func (b *OptionsBuilder) WeeklyMetrics(metrics Metrics) *OptionsBuilder {
+	b.options.WeeklyMetrics = metrics
+	return b
+}
+
+// MonthlyMetrics sets the specific monthly metrics to be fetched (Seasonal API).
+func (b *OptionsBuilder) MonthlyMetrics(metrics Metrics) *OptionsBuilder {
+	b.options.MonthlyMetrics = metrics
 	return b
 }
 
@@ -234,6 +258,56 @@ const (
 	WindGusts10mMax             Metric = "wind_gusts_10m_max"
 	WindDirection10mDominant    Metric = "wind_direction_10m_dominant"
 	ShortwaveRadiationSum       Metric = "shortwave_radiation_sum"
+
+	// Seasonal Metrics (Weekly & Monthly)
+	Temperature2mMean          Metric = "temperature_2m_mean"
+	Temperature2mAnomaly       Metric = "temperature_2m_anomaly"
+	Temperature2mMaxMean       Metric = "temperature_2m_max_mean"
+	Temperature2mMinMean       Metric = "temperature_2m_min_mean"
+	DewPoint2mMean             Metric = "dew_point_2m_mean"
+	PrecipitationMean          Metric = "precipitation_mean"
+	PrecipitationAnomaly       Metric = "precipitation_anomaly"
+	PressureMslMean            Metric = "pressure_msl_mean"
+	PressureMslAnomaly         Metric = "pressure_msl_anomaly"
+	SoilMoisture0To10cmMean    Metric = "soil_moisture_0_to_10cm_mean"
+	SoilMoisture0To10cmAnomaly Metric = "soil_moisture_0_to_10cm_anomaly"
+
+	// Marine Metrics (Hourly)
+	WaveHeight                  Metric = "wave_height"
+	WaveDirection               Metric = "wave_direction"
+	WavePeriod                  Metric = "wave_period"
+	WavePeakPeriod              Metric = "wave_peak_period"
+	WindWaveHeight              Metric = "wind_wave_height"
+	WindWaveDirection           Metric = "wind_wave_direction"
+	WindWavePeriod              Metric = "wind_wave_period"
+	WindWavePeakPeriod          Metric = "wind_wave_peak_period"
+	SwellWaveHeight             Metric = "swell_wave_height"
+	SwellWaveDirection          Metric = "swell_wave_direction"
+	SwellWavePeriod             Metric = "swell_wave_period"
+	SwellWavePeakPeriod         Metric = "swell_wave_peak_period"
+	SecondarySwellWaveHeight    Metric = "secondary_swell_wave_height"
+	SecondarySwellWaveDirection Metric = "secondary_swell_wave_direction"
+	SecondarySwellWavePeriod    Metric = "secondary_swell_wave_period"
+	TertiarySwellWaveHeight     Metric = "tertiary_swell_wave_height"
+	TertiarySwellWaveDirection  Metric = "tertiary_swell_wave_direction"
+	TertiarySwellWavePeriod     Metric = "tertiary_swell_wave_period"
+	SeaLevelHeight              Metric = "sea_level_height"
+	SeaSurfaceTemperature       Metric = "sea_surface_temperature"
+	OceanCurrentVelocity        Metric = "ocean_current_velocity"
+	OceanCurrentDirection       Metric = "ocean_current_direction"
+
+	// Marine Metrics (Daily)
+	WaveHeightMax              Metric = "wave_height_max"
+	WaveDirectionDominant      Metric = "wave_direction_dominant"
+	WavePeriodMax              Metric = "wave_period_max"
+	WindWaveHeightMax          Metric = "wind_wave_height_max"
+	WindWaveDirectionDominant  Metric = "wind_wave_direction_dominant"
+	WindWavePeriodMax          Metric = "wind_wave_period_max"
+	WindWavePeakPeriodMax      Metric = "wind_wave_peak_period_max"
+	SwellWaveHeightMax         Metric = "swell_wave_height_max"
+	SwellWaveDirectionDominant Metric = "swell_wave_direction_dominant"
+	SwellWavePeriodMax         Metric = "swell_wave_period_max"
+	SwellWavePeakPeriodMax     Metric = "swell_wave_peak_period_max"
 )
 
 var hourlyMetrics = []Metric{
