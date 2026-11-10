@@ -1,6 +1,7 @@
 package openmeteogo
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,20 +17,28 @@ func TestURL_Seasonal(t *testing.T) {
 		options Options
 		want    string
 	}{
-		"basic seasonal via models": {
+		// Models alone must NOT imply a seasonal request. The forecast and
+		// marine endpoints accept a models parameter too, so routing on it
+		// would silently send an ordinary forecast to the seasonal API.
+		"models alone stays on the forecast endpoint": {
 			client:  NewClient(),
 			options: *NewOptionsBuilder().Models([]string{"ecmwf_seas5"}).Latitude(52.52).Longitude(13.41).Build(),
-			want:    "https://seasonal-api.open-meteo.com/v1/seasonal?latitude=52.52&longitude=13.41&models=ecmwf_seas5",
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&models=ecmwf_seas5",
+		},
+		"multiple models stay on the forecast endpoint": {
+			client:  NewClient(),
+			options: *NewOptionsBuilder().Models([]string{"ecmwf_seas5", "cfs"}).Latitude(0).Longitude(0).Build(),
+			want:    "https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&models=ecmwf_seas5%2Ccfs",
 		},
 		"basic seasonal via flag": {
 			client:  NewClient(),
 			options: *NewOptionsBuilder().Seasonal(true).Latitude(52.52).Longitude(13.41).Build(),
 			want:    "https://seasonal-api.open-meteo.com/v1/seasonal?latitude=52.52&longitude=13.41",
 		},
-		"with models": {
+		"seasonal flag carries models through": {
 			client:  NewClient(),
-			options: *NewOptionsBuilder().Models([]string{"ecmwf_seas5", "cfs"}).Latitude(0).Longitude(0).Build(),
-			want:    "https://seasonal-api.open-meteo.com/v1/seasonal?latitude=0&longitude=0&models=ecmwf_seas5%2Ccfs",
+			options: *NewOptionsBuilder().Seasonal(true).Models([]string{"ecmwf_seas5"}).Latitude(52.52).Longitude(13.41).Build(),
+			want:    "https://seasonal-api.open-meteo.com/v1/seasonal?latitude=52.52&longitude=13.41&models=ecmwf_seas5",
 		},
 		"weekly metrics": {
 			client:  NewClient(),
@@ -52,10 +61,12 @@ func TestURL_Seasonal(t *testing.T) {
 				Build(),
 			want: "https://seasonal-api.open-meteo.com/v1/seasonal?latitude=10&longitude=20&models=modelA&monthly=precipitation_mean&weekly=temperature_2m_mean",
 		},
-		"with api key": {
+		// The key goes in the X-Api-Key header now, so it must not appear in
+		// the query string: a transport error embeds the URL verbatim.
+		"api key selects the customer host without entering the query": {
 			client:  NewClientWithKey("testkey"),
-			options: *NewOptionsBuilder().Models([]string{"modelA"}).Latitude(0).Longitude(0).Build(),
-			want:    "https://customer-seasonal-api.open-meteo.com/v1/seasonal?apikey=testkey&latitude=0&longitude=0&models=modelA",
+			options: *NewOptionsBuilder().Seasonal(true).Models([]string{"modelA"}).Latitude(0).Longitude(0).Build(),
+			want:    "https://customer-seasonal-api.open-meteo.com/v1/seasonal?latitude=0&longitude=0&models=modelA",
 		},
 	}
 
@@ -107,7 +118,7 @@ func TestClient_Get_Seasonal(t *testing.T) {
 		WeeklyMetrics(Metrics{Temperature2mMean}).
 		Build()
 
-	wd, err := client.Get(opts)
+	wd, err := client.Get(context.Background(), opts)
 	require.NoError(t, err)
 	assert.NotNil(t, wd)
 	assert.Equal(t, 52.52, wd.Latitude)
@@ -169,7 +180,7 @@ func TestClient_Get_Seasonal_Integration(t *testing.T) {
 	opts := NewOptionsBuilder().
 		WeeklyMetrics(Metrics{Temperature2mMean}). // Triggers seasonal logic
 		Build()
-	wd, err := client.Get(opts)
+	wd, err := client.Get(context.Background(), opts)
 
 	require.NoError(t, err)
 	assert.Equal(t, 10.0, wd.Latitude)

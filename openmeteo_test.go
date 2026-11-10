@@ -15,6 +15,7 @@
 package openmeteogo
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -46,7 +47,7 @@ func TestClient_Get(t *testing.T) {
 	client.scheme = "http"
 
 	opts := NewOptionsBuilder().Build()
-	weatherData, err := client.Get(opts)
+	weatherData, err := client.Get(context.Background(), opts)
 
 	require.NoError(t, err)
 	assert.NotNil(t, weatherData)
@@ -71,7 +72,7 @@ func TestClient_Get_ErrorConditions(t *testing.T) {
 			Transport: &mockRoundTripper{err: errors.New("simulated network error")},
 		}
 
-		_, err := client.Get(&Options{})
+		_, err := client.Get(context.Background(), &Options{})
 		if err == nil {
 			t.Fatal("expected a network error, but got nil")
 		}
@@ -92,8 +93,10 @@ func TestClient_Get_ErrorConditions(t *testing.T) {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(`{"error": "true", "reason": "Something went wrong"}`))
 			},
-			expectErr:   true,
-			errContains: "server http error: 500", // The current Get() implementation will fail on JSON decoding
+			expectErr: true,
+			// The reason from the body is part of the message now, rather
+			// than being read off the wire and thrown away.
+			errContains: "open-meteo: http 500: Something went wrong",
 		},
 
 		"API Error 400 Bad Request": {
@@ -102,7 +105,7 @@ func TestClient_Get_ErrorConditions(t *testing.T) {
 				w.Write([]byte(`{"error": "true", "reason": "Invalid request parameters"}`))
 			},
 			expectErr:   true,
-			errContains: "server http error: 400", // This also fails on JSON decoding
+			errContains: "open-meteo: http 400: Invalid request parameters",
 		},
 
 		"Malformed JSON Response": {
@@ -146,7 +149,7 @@ func TestClient_Get_ErrorConditions(t *testing.T) {
 			client.scheme = urlParts[0]
 			client.host = urlParts[1]
 
-			_, err := client.Get(opts)
+			_, err := client.Get(context.Background(), opts)
 
 			if tc.expectErr {
 				if err == nil {
@@ -185,7 +188,7 @@ func TestURL(t *testing.T) {
 		"with api key": {
 			client:  NewClientWithKey("testkeynotvalue"),
 			options: Options{},
-			want:    "https://customer-api.open-meteo.com/v1/forecast?apikey=testkeynotvalue&latitude=0&longitude=0",
+			want:    "https://customer-api.open-meteo.com/v1/forecast?latitude=0&longitude=0",
 		},
 		"hourly and daily": {
 			client:  NewClient(),
@@ -204,7 +207,7 @@ func TestURL(t *testing.T) {
 		},
 		"other options": {
 			client:  NewClient(),
-			options: *NewOptionsBuilder().Timezone(*time.UTC).PastDays(1).ForcastDays(2).Build(),
+			options: *NewOptionsBuilder().Timezone(time.UTC).PastDays(1).ForecastDays(2).Build(),
 			want:    "https://api.open-meteo.com/v1/forecast?forecast_days=2&latitude=0&longitude=0&past_days=1&timezone=UTC",
 		},
 		"marine": {
@@ -220,7 +223,7 @@ func TestURL(t *testing.T) {
 		"marine with api key": {
 			client:  NewClientWithKey("testkeynotvalue"),
 			options: *NewOptionsBuilder().Marine(true).Build(),
-			want:    "https://customer-marine-api.open-meteo.com/v1/marine?apikey=testkeynotvalue&latitude=0&longitude=0",
+			want:    "https://customer-marine-api.open-meteo.com/v1/marine?latitude=0&longitude=0",
 		},
 		"marine beats the archive rewrite": {
 			client: NewClient(),

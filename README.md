@@ -27,8 +27,12 @@ go libraries for Open Meteo, and because it made for a fun weekend project.
 To install the library, use go get:
 
 ```bash
-go get github.com/tpryan/openmeteogo
+go get github.com/tpryan/openmeteogo/v3
 ```
+
+> **Upgrading from v2?** `Get` now takes a `context.Context`, `Timezone` takes a
+> `*time.Location`, `ForcastDays` is spelled `ForecastDays`, and non-200
+> responses return an `*APIError`. See [Handling Errors](#handling-errors).
 
 ## **Usage**
 
@@ -39,16 +43,20 @@ for San Francisco.
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/tpryan/openmeteogo/v2"
+	"github.com/tpryan/openmeteogo/v3"
 )
 
 func main() {
 	// 1. Create a new client
 	c := openmeteogo.NewClient()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// 2. Set the options for the weather data you want.
 	// Use the fluent builder to easily configure your request.
@@ -56,7 +64,7 @@ func main() {
 		Latitude(37.7749).
 		Longitude(-122.4194).
 		TemperatureUnit(openmeteogo.Fahrenheit).
-		ForcastDays(1).
+		ForecastDays(1).
 		CurrentMetrics(openmeteogo.Metrics{
 			openmeteogo.Temperature2m,
 			openmeteogo.WeatherCode,
@@ -69,7 +77,7 @@ func main() {
 		Build()
 
 	// 3. Make the API call
-	w, err := c.Get(opts)
+	w, err := c.Get(ctx, opts)
 	if err != nil {
 		log.Fatalf("Failed to get weather data: %v", err)
 	}
@@ -111,7 +119,7 @@ To get historical data, simply provide a Start and End date. The client will aut
         End(time.Date(2023, 7, 7, 0, 0, 0, 0, time.UTC)).
 		Build()
 
-	wp, err := c.Get(pastOpts)
+	wp, err := c.Get(ctx, pastOpts)
 	if err != nil {
 		log.Fatalf("Failed to get historical weather data: %v", err)
 	}
@@ -147,7 +155,7 @@ real reading of zero. Check coverage with `HasAny` before reading a series.
 		}).
 		Build()
 
-	wd, err := c.Get(opts)
+	wd, err := c.Get(ctx, opts)
 	if err != nil {
 		log.Fatalf("Failed to get marine data: %v", err)
 	}
@@ -177,6 +185,29 @@ Three helpers keep callers from reinventing the nil handling:
 Validate marine metrics with `NewMetrics` using the `marine_hourly`,
 `marine_daily`, or `marine_current` metric type.
 
+### **Handling Errors**
+
+A rejected request comes back as an `*APIError`. Open-Meteo explains failures
+in the response body, and `Reason` carries that text, so you get "Invalid
+timezone" rather than only a status code.
+
+```go
+	w, err := c.Get(ctx, opts)
+	if err != nil {
+		var apiErr *openmeteogo.APIError
+		if errors.As(err, &apiErr) {
+			if apiErr.RateLimited() {
+				log.Fatalf("rate limited, retry after %s", apiErr.RetryAfter)
+			}
+			log.Fatalf("http %d: %s", apiErr.StatusCode, apiErr.Reason)
+		}
+		log.Fatalf("request failed: %v", err)
+	}
+```
+
+`RetryAfter` is populated from the `Retry-After` header when the API sends one,
+and is zero otherwise.
+
 ## **Options**
 
 The OptionsBuilder provides a simple way to configure your request.
@@ -188,14 +219,14 @@ The OptionsBuilder provides a simple way to configure your request.
 | TemperatureUnit() | Set the temperature unit. (Celsius, Fahrenheit) | .TemperatureUnit(openmeteogo.Celsius) |
 | WindspeedUnit() | Set the wind speed unit. (KMH, MPH, etc.) | .WindspeedUnit(openmeteogo.MPH) |
 | PrecipitationUnit() | Set the precipitation unit. (MM, IN) | .PrecipitationUnit(openmeteogo.IN) |
-| Timezone() | Set the timezone for results. | .Timezone(\*time.UTC) |
+| Timezone() | Set the timezone for results. Takes a `*time.Location`. | .Timezone(time.UTC) |
 | PastDays() | Request N number of past days of data. | .PastDays(7) |
-| ForcastDays() | Request N number of forecast days. | .ForcastDays(3) |
+| ForecastDays() | Request N number of forecast days. | .ForecastDays(3) |
 | Start() | Set a start date for historical queries. | .Start(time.Now()) |
 | End() | Set an end date for historical queries. | .End(time.Now()) |
 | Seasonal() | Enable Seasonal API. | .Seasonal(true) |
 | Marine() | Enable Marine API. | .Marine(true) |
-| Models() | Set specific weather models (Seasonal/Marine). | .Models([]string{"ecmwf_seas5"}) |
+| Models() | Set specific weather models. Accepted on every endpoint, and does not by itself select the Seasonal API. | .Models([]string{"gfs_seamless"}) |
 | CurrentMetrics() | Select which current metrics to fetch. | .CurrentMetrics(\&CurrentMetrics{...}) |
 | DailyMetrics() | Select which daily metrics to fetch. | .DailyMetrics(\&DailyMetrics{...}) |
 | HourlyMetrics() | Select which hourly metrics to fetch. | .HourlyMetrics(\&HourlyMetrics{...}) |

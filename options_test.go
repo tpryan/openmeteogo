@@ -81,9 +81,9 @@ func TestOptionsBuilder(t *testing.T) {
 		TemperatureUnit(Fahrenheit).
 		WindspeedUnit(MPH).
 		PrecipitationUnit(IN).
-		Timezone(*tz).
+		Timezone(tz).
 		PastDays(5).
-		ForcastDays(3).
+		ForecastDays(3).
 		Start(start).
 		End(end).
 		HourlyMetrics(hourly).
@@ -96,9 +96,9 @@ func TestOptionsBuilder(t *testing.T) {
 	assert.Equal(t, Fahrenheit, opts.TemperatureUnit)
 	assert.Equal(t, MPH, opts.WindspeedUnit)
 	assert.Equal(t, IN, opts.PrecipitationUnit)
-	assert.Equal(t, *tz, opts.Timezone)
+	assert.Equal(t, tz, opts.Timezone)
 	assert.Equal(t, 5, opts.PastDays)
-	assert.Equal(t, 3, opts.ForcastDays)
+	assert.Equal(t, 3, opts.ForecastDays)
 	assert.Equal(t, start, opts.Start)
 	assert.Equal(t, end, opts.End)
 	assert.Equal(t, hourly, opts.HourlyMetrics)

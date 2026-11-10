@@ -15,10 +15,15 @@
 package openmeteogo
 
 import (
+	"cmp"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,7 +39,91 @@ const (
 
 	// defaultUserAgent is the default User-Agent string sent with HTTP requests.
 	defaultUserAgent = "OpenMeteoGo-Client"
+
+	// defaultTimeout bounds a single request. http.DefaultClient has no
+	// timeout, so without this a stalled connection hangs the caller forever.
+	defaultTimeout = 30 * time.Second
+
+	// errorBodyLimit caps how much of an error response body is read. The API
+	// sends a short JSON object, but a proxy in the path can return anything.
+	errorBodyLimit = 64 << 10
 )
+
+// APIError reports a non-200 response from the Open-Meteo API.
+//
+// The service describes failures in the response body as
+// {"error": true, "reason": "..."}, and Reason carries that text so callers
+// can see why a request was rejected instead of only its status code.
+type APIError struct {
+	// StatusCode is the HTTP status returned by the API.
+	StatusCode int
+	// Reason is the explanation taken from the response body, empty when the
+	// body carried none.
+	Reason string
+	// RetryAfter is the delay requested by a Retry-After header, which the API
+	// sends when it rate limits a client. Zero when the header was absent.
+	RetryAfter time.Duration
+}
+
+func (e *APIError) Error() string {
+	switch {
+	case e.Reason != "" && e.RetryAfter > 0:
+		return fmt.Sprintf("open-meteo: http %d: %s (retry after %s)", e.StatusCode, e.Reason, e.RetryAfter)
+	case e.Reason != "":
+		return fmt.Sprintf("open-meteo: http %d: %s", e.StatusCode, e.Reason)
+	default:
+		return fmt.Sprintf("open-meteo: http %d", e.StatusCode)
+	}
+}
+
+// RateLimited reports whether the request was rejected for rate limiting.
+// Pair it with RetryAfter to decide how long to wait before retrying.
+func (e *APIError) RateLimited() bool {
+	return e.StatusCode == http.StatusTooManyRequests
+}
+
+// newAPIError builds an APIError from a failed response, reading the body for
+// the reason the API gives for the rejection.
+func newAPIError(res *http.Response) *APIError {
+	e := &APIError{StatusCode: res.StatusCode}
+
+	data, err := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
+	if err == nil && len(data) > 0 {
+		// Decode only the reason. The "error" flag adds nothing a non-200
+		// status has not already said, and it is not always a JSON boolean.
+		var body struct {
+			Reason string `json:"reason"`
+		}
+		if json.Unmarshal(data, &body) == nil {
+			e.Reason = body.Reason
+		} else if txt := strings.TrimSpace(string(data)); txt != "" {
+			// Not JSON at all: most likely a gateway error page.
+			e.Reason = truncate(txt, 200)
+		}
+	}
+
+	if v := res.Header.Get("Retry-After"); v != "" {
+		if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
+			e.RetryAfter = time.Duration(secs) * time.Second
+		} else if t, err := http.ParseTime(v); err == nil {
+			if d := time.Until(t); d > 0 {
+				e.RetryAfter = d
+			}
+		}
+	}
+
+	return e
+}
+
+// truncate shortens s to at most n runes, never splitting one.
+func truncate(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+
+	return string(r[:n]) + "…"
+}
 
 // Client is used to interact with the Open-Meteo API.
 type Client struct {
@@ -50,15 +139,30 @@ type Client struct {
 }
 
 // Get fetches weather data based on the provided Options.
-func (c *Client) Get(o *Options) (*WeatherData, error) {
-	req, err := http.NewRequest("GET", c.url(o), nil)
+//
+// The context bounds the whole request: cancelling it aborts an in-flight
+// call. A non-200 response is returned as an *APIError carrying the reason
+// the API gave, so use errors.As to inspect it.
+func (c *Client) Get(ctx context.Context, o *Options) (*WeatherData, error) {
+	if o == nil {
+		return nil, errors.New("openmeteogo: nil Options")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.url(o), nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 
-	req.Header.Set("User-Agent", c.UserAgent)
+	req.Header.Set("User-Agent", cmp.Or(c.UserAgent, defaultUserAgent))
 
-	res, err := c.HTTPClient.Do(req)
+	// The key travels in a header rather than the query string. Open-Meteo
+	// accepts both, but a transport failure returns a *url.Error holding the
+	// full URL, which would put the key straight into the caller's logs.
+	if c.apiKey != "" {
+		req.Header.Set("X-Api-Key", c.apiKey)
+	}
+
+	res, err := c.httpClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("sending request: %w", err)
 	}
@@ -66,7 +170,7 @@ func (c *Client) Get(o *Options) (*WeatherData, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server http error: %d", res.StatusCode)
+		return nil, newAPIError(res)
 	}
 
 	var wd WeatherData
@@ -77,10 +181,27 @@ func (c *Client) Get(o *Options) (*WeatherData, error) {
 	return &wd, nil
 }
 
+// httpClient returns the client to send with, falling back to a timeout-bearing
+// default so a zero-value Client works instead of panicking.
+func (c *Client) httpClient() *http.Client {
+	if c.HTTPClient != nil {
+		return c.HTTPClient
+	}
+
+	return newHTTPClient()
+}
+
+// newHTTPClient builds the default transport. It is deliberately not
+// http.DefaultClient: that one has no timeout, and it is process-global, so
+// setting a timeout on it would reach into unrelated code.
+func newHTTPClient() *http.Client {
+	return &http.Client{Timeout: defaultTimeout}
+}
+
 // NewClient creates a new Client with default settings.
 func NewClient() *Client {
 	return &Client{
-		HTTPClient:   http.DefaultClient,
+		HTTPClient:   newHTTPClient(),
 		UserAgent:    defaultUserAgent,
 		scheme:       defaultScheme,
 		host:         defaultHost,
@@ -91,38 +212,44 @@ func NewClient() *Client {
 
 // NewClientWithKey creates a new Client configured with a commercial API key.
 func NewClientWithKey(key string) *Client {
-	return &Client{
-		apiKey:       key,
-		HTTPClient:   http.DefaultClient,
-		UserAgent:    defaultUserAgent,
-		scheme:       defaultScheme,
-		host:         defaultHost,
-		seasonalHost: defaultSeasonalHost,
-		marineHost:   defaultMarineHost,
-	}
+	c := NewClient()
+	c.apiKey = key
+
+	return c
 }
 
 func (c *Client) url(o *Options) string {
-	host := c.host
+	// Fall back to the defaults so a Client built as a struct literal, rather
+	// than through NewClient, still produces a usable URL.
+	host := cmp.Or(c.host, defaultHost)
 	path := "/v1/forecast"
 
-	// Determine if the request is for seasonal data.
-	isSeasonal := o.Seasonal || len(o.Models) > 0 || len(o.WeeklyMetrics) > 0 || len(o.MonthlyMetrics) > 0
+	// Determine if the request is for seasonal data. Models is deliberately
+	// not part of this test: the forecast and marine endpoints accept a
+	// models parameter too, so keying off it would silently reroute an
+	// ordinary forecast request to the seasonal API.
+	isSeasonal := o.Seasonal || len(o.WeeklyMetrics) > 0 || len(o.MonthlyMetrics) > 0
 
 	// Determine if the request is for marine data.
 	isMarine := o.Marine
 
-	// Determine if the request is for data older than the forecast API's history limit.
-	isHistorical := !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit
+	// Determine if the request is for data older than the forecast API's
+	// history limit. The whole range has to be outside the window: if End
+	// reaches back into it, the forecast endpoint still serves the request,
+	// and rewriting to the archive would silently drop the newer half.
+	isHistorical := false
+	if !o.Start.IsZero() && time.Since(o.Start) > forecastHistoryLimit {
+		isHistorical = o.End.IsZero() || time.Since(o.End) > forecastHistoryLimit
+	}
 
 	// The marine and seasonal endpoints each serve their own history, so they
 	// win over the archive rewrite rather than combining with it.
 	switch {
 	case isMarine:
-		host = c.marineHost
+		host = cmp.Or(c.marineHost, defaultMarineHost)
 		path = marinePath
 	case isSeasonal:
-		host = c.seasonalHost
+		host = cmp.Or(c.seasonalHost, defaultSeasonalHost)
 		path = seasonalPath
 	case isHistorical:
 		host = "archive-" + host
@@ -134,7 +261,7 @@ func (c *Client) url(o *Options) string {
 	}
 
 	u := url.URL{
-		Scheme: c.scheme,
+		Scheme: cmp.Or(c.scheme, defaultScheme),
 		Host:   host,
 		Path:   path,
 	}
@@ -144,42 +271,35 @@ func (c *Client) url(o *Options) string {
 	// Use common options encoding
 	c.encodeCommonOptions(q, o)
 
+	// Every endpoint accepts a model selection, so this is not gated on the
+	// request being seasonal.
+	if len(o.Models) > 0 {
+		q.Set("models", strings.Join(o.Models, ","))
+	}
+
 	if isSeasonal {
-		if len(o.Models) > 0 {
-			q.Set("models", strings.Join(o.Models, ","))
+		if val := o.WeeklyMetrics.encode(); val != "" {
+			q.Set("weekly", val)
 		}
-		if o.WeeklyMetrics != nil {
-			if val := o.WeeklyMetrics.encode(); val != "" {
-				q.Set("weekly", val)
-			}
-		}
-		if o.MonthlyMetrics != nil {
-			if val := o.MonthlyMetrics.encode(); val != "" {
-				q.Set("monthly", val)
-			}
+		if val := o.MonthlyMetrics.encode(); val != "" {
+			q.Set("monthly", val)
 		}
 	}
 
-	if o.HourlyMetrics != nil {
-		if val := o.HourlyMetrics.encode(); val != "" {
-			q.Set("hourly", val)
-		}
+	if val := o.HourlyMetrics.encode(); val != "" {
+		q.Set("hourly", val)
 	}
 
-	if o.DailyMetrics != nil {
-		if val := o.DailyMetrics.encode(); val != "" {
-			q.Set("daily", val)
-		}
+	if val := o.DailyMetrics.encode(); val != "" {
+		q.Set("daily", val)
 	}
 
-	if o.ForcastDays > 0 {
-		q.Set("forecast_days", fmt.Sprintf("%v", o.ForcastDays))
+	if o.ForecastDays > 0 {
+		q.Set("forecast_days", strconv.Itoa(o.ForecastDays))
 	}
 
-	if o.CurrentMetrics != nil {
-		if val := o.CurrentMetrics.encode(); val != "" {
-			q.Set("current", val)
-		}
+	if val := o.CurrentMetrics.encode(); val != "" {
+		q.Set("current", val)
 	}
 
 	u.RawQuery = q.Encode()
@@ -189,12 +309,8 @@ func (c *Client) url(o *Options) string {
 
 // encodeCommonOptions encodes options shared between Forecast, Archive, and Seasonal APIs.
 func (c *Client) encodeCommonOptions(q url.Values, o *Options) {
-	if c.apiKey != "" {
-		q.Set("apikey", c.apiKey)
-	}
-
-	q.Set("latitude", fmt.Sprintf("%v", o.Latitude))
-	q.Set("longitude", fmt.Sprintf("%v", o.Longitude))
+	q.Set("latitude", formatCoord(o.Latitude))
+	q.Set("longitude", formatCoord(o.Longitude))
 
 	if o.TemperatureUnit != "" {
 		q.Set("temperature_unit", string(o.TemperatureUnit))
@@ -208,8 +324,10 @@ func (c *Client) encodeCommonOptions(q url.Values, o *Options) {
 		q.Set("precipitation_unit", string(o.PrecipitationUnit))
 	}
 
-	if o.Timezone.String() != "" {
-		q.Set("timezone", o.Timezone.String())
+	if o.Timezone != nil {
+		if name := o.Timezone.String(); name != "" {
+			q.Set("timezone", name)
+		}
 	}
 
 	if !o.Start.IsZero() {
@@ -221,8 +339,14 @@ func (c *Client) encodeCommonOptions(q url.Values, o *Options) {
 	}
 
 	if o.PastDays > 0 {
-		q.Set("past_days", fmt.Sprintf("%v", o.PastDays))
+		q.Set("past_days", strconv.Itoa(o.PastDays))
 	}
+}
+
+// formatCoord renders a coordinate in plain decimal. The %v verb switches to
+// scientific notation for small magnitudes, which the API rejects.
+func formatCoord(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
 }
 
 // WeatherData is the main struct that holds all the data returned from the API.

@@ -34,12 +34,21 @@ type Options struct {
 	WindspeedUnit WindSpeedUnit
 	// PrecipitationUnit sets the unit for precipitation values. Default is millimeters.
 	PrecipitationUnit PrecipitationUnit
-	// Timezone for the forecast data. Default is UTC.
-	Timezone time.Location
+	// Timezone for the forecast data. Default is UTC when nil.
+	//
+	// This is a pointer because time.Location is only ever valid as one.
+	// time.Local is a sentinel the time package recognises by address, so a
+	// copy of it reports an empty name until the package happens to have
+	// initialised, which used to drop the timezone from the request
+	// depending on what the caller had done beforehand.
+	//
+	// The name is sent verbatim and must be one the API accepts. See
+	// OptionsBuilder.Timezone.
+	Timezone *time.Location
 	// PastDays specifies how many days of historical data to retrieve. Default is 0.
 	PastDays int
-	// ForcastDays specifies how many days of forecast data to retrieve.
-	ForcastDays int
+	// ForecastDays specifies how many days of forecast data to retrieve.
+	ForecastDays int
 	// Start date for the historical data query.
 	Start time.Time
 	// End date for the historical data query.
@@ -104,8 +113,15 @@ func (b *OptionsBuilder) PrecipitationUnit(unit PrecipitationUnit) *OptionsBuild
 	return b
 }
 
-// Timezone sets the timezone for the returned data.
-func (b *OptionsBuilder) Timezone(tz time.Location) *OptionsBuilder {
+// Timezone sets the timezone for the returned data. A nil location leaves the
+// parameter unset, and the API defaults to UTC.
+//
+// The location's name is sent verbatim, so it has to be one the API accepts:
+// time.UTC or a time.LoadLocation result such as "America/Los_Angeles".
+// time.Local is only usable where it resolves to a real zone name, which
+// depends on how the host sets TZ; where it resolves to "Local" the API
+// rejects the request rather than guessing.
+func (b *OptionsBuilder) Timezone(tz *time.Location) *OptionsBuilder {
 	b.options.Timezone = tz
 	return b
 }
@@ -116,9 +132,9 @@ func (b *OptionsBuilder) PastDays(days int) *OptionsBuilder {
 	return b
 }
 
-// ForcastDays sets the number of future days to retrieve data for.
-func (b *OptionsBuilder) ForcastDays(days int) *OptionsBuilder {
-	b.options.ForcastDays = days
+// ForecastDays sets the number of future days to retrieve data for.
+func (b *OptionsBuilder) ForecastDays(days int) *OptionsBuilder {
+	b.options.ForecastDays = days
 	return b
 }
 
@@ -194,13 +210,29 @@ type Metric string
 
 type Metrics []Metric
 
+// encode renders the list in the comma-separated form the API expects,
+// skipping empty entries and repeats while preserving order.
 func (m Metrics) encode() string {
-	sl := []string{}
+	if len(m) == 0 {
+		return ""
+	}
+
+	seen := make(map[Metric]struct{}, len(m))
+	sl := make([]string, 0, len(m))
+
 	for _, metric := range m {
+		if metric == "" {
+			continue
+		}
+		if _, dup := seen[metric]; dup {
+			continue
+		}
+
+		seen[metric] = struct{}{}
 		sl = append(sl, string(metric))
 	}
 
-	return strings.Join([]string(sl), ",")
+	return strings.Join(sl, ",")
 }
 
 const (
@@ -362,10 +394,15 @@ var hourlyMetrics = []Metric{
 	SoilMoisture3To9cm,
 }
 
-func NewMetrics(metricType string, Metrics ...Metric) (Metrics, error) {
-	result := []Metric{}
-
+// NewMetrics checks metrics against the set the named request type accepts
+// and returns them as a Metrics.
+//
+// metricType is one of "hourly", "daily", "current", "weekly", "monthly",
+// "marine_hourly", "marine_daily" or "marine_current". Any other value is an
+// error rather than a silently empty result.
+func NewMetrics(metricType string, metrics ...Metric) (Metrics, error) {
 	var allowed []Metric
+
 	switch metricType {
 	case "hourly":
 		allowed = hourlyMetrics
@@ -373,30 +410,46 @@ func NewMetrics(metricType string, Metrics ...Metric) (Metrics, error) {
 		allowed = dailyMetrics
 	case "current":
 		allowed = currentMetrics
-	case "weekly":
-		// TODO: Define strict list for weekly if needed
-		return Metrics, nil
-	case "monthly":
-		// TODO: Define strict list for monthly if needed
-		return Metrics, nil
+	case "weekly", "monthly":
+		allowed = seasonalMetrics
 	case "marine_hourly":
 		allowed = marineHourlyMetrics
 	case "marine_daily":
 		allowed = marineDailyMetrics
 	case "marine_current":
 		allowed = marineCurrentMetrics
+	default:
+		// Without this, an unrecognised type left allowed nil, so a call
+		// passing no metrics returned success and accepted the typo.
+		return nil, fmt.Errorf("unknown metric type: %q", metricType)
 	}
 
-	for _, metric := range Metrics {
+	result := make(Metrics, 0, len(metrics))
 
+	for _, metric := range metrics {
 		if !slices.Contains(allowed, metric) {
-			return nil, fmt.Errorf("invalid for %s metrics: %s ", metricType, metric)
+			return nil, fmt.Errorf("invalid for %s metrics: %s", metricType, metric)
 		}
 		result = append(result, metric)
 	}
 
 	return result, nil
+}
 
+// seasonalMetrics are the metrics the seasonal endpoint accepts for both the
+// weekly and monthly aggregations.
+var seasonalMetrics = []Metric{
+	Temperature2mMean,
+	Temperature2mAnomaly,
+	Temperature2mMaxMean,
+	Temperature2mMinMean,
+	DewPoint2mMean,
+	PrecipitationMean,
+	PrecipitationAnomaly,
+	PressureMslMean,
+	PressureMslAnomaly,
+	SoilMoisture0To10cmMean,
+	SoilMoisture0To10cmAnomaly,
 }
 
 var currentMetrics = []Metric{

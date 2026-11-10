@@ -15,16 +15,21 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
-	openmeteogo "github.com/tpryan/openmeteogo/v2"
+	openmeteogo "github.com/tpryan/openmeteogo/v3"
 )
 
 func main() {
 	// Create a new client
 	c := openmeteogo.NewClient()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Set the options for the weather data we want.
 	// Let's get the current temperature and weather code for San Francisco,
@@ -32,7 +37,7 @@ func main() {
 	opts := openmeteogo.NewOptionsBuilder().
 		Latitude(37.7749).Longitude(-122.4194).
 		TemperatureUnit(openmeteogo.Fahrenheit).
-		ForcastDays(1).
+		ForecastDays(1).
 		CurrentMetrics(openmeteogo.Metrics{
 			openmeteogo.Temperature2m,
 			openmeteogo.WeatherCode,
@@ -45,8 +50,14 @@ func main() {
 		Build()
 
 	// Make the API call
-	weather, err := c.Get(opts)
+	weather, err := c.Get(ctx, opts)
 	if err != nil {
+		// A rejected request arrives as an *APIError carrying the reason the
+		// API gave, which is a good deal more useful than the status code.
+		var apiErr *openmeteogo.APIError
+		if errors.As(err, &apiErr) {
+			log.Fatalf("Open-Meteo rejected the request (http %d): %s", apiErr.StatusCode, apiErr.Reason)
+		}
 		log.Fatalf("Failed to get weather data: %v", err)
 	}
 
@@ -75,7 +86,7 @@ func main() {
 		Start(time.Date(2025, 7, 15, 0, 0, 0, 0, time.UTC)).End(time.Date(2025, 7, 26, 0, 0, 0, 0, time.UTC)).
 		Build()
 
-	weatherPast, err := c.Get(pastOpts)
+	weatherPast, err := c.Get(ctx, pastOpts)
 	if err != nil {
 		log.Fatalf("Failed to get weather data: %v", err)
 	}
